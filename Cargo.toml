@@ -1,0 +1,14 @@
+[package]
+name = "pdfsqueeze"
+version = "0.1.0"
+edition = "2021"
+description = "Offline, open-source PDF toolkit: compress, merge, split and more. Nothing leaves your machine."
+license = "AGPL-3.0-or-later"
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+flate2 = "1"
+image = { version = "0.25", default-features = false, features = ["jpeg", "png", "gif", "bmp", "webp", "tiff"] }
+rpassword = "7"
+serde_json = "1"
