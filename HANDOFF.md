@@ -38,7 +38,7 @@ The owner (Shivam, GitHub `shivamhire025`) stated these requirements:
 | Agent mode: `--json` envelope, exit/error codes, `tools`, MCP server | built | tested with a scripted JSON-RPC client; **not** with Claude Desktop or Claude Code themselves |
 | Packages: macOS arm64 (needs macOS 14+), macOS Intel (macOS 15+), Linux x86_64 + arm64 (glibc 2.35+), Windows x64 (with OCR), Windows x86 (no OCR) | **all six built and smoke-tested in CI** | release dry run `38021880189` |
 | Desktop window (`pdfsqueeze ui`) | built, **verified on macOS only** | window list, menu bar, Quit, page loaded; see below |
-| Windows window (WebView2) | written, **never compiled or run** | first CI build with `wry`/`tao` will be its first test |
+| Windows window (WebView2) | **compiles in CI** (run `38025082944`, all 5 jobs green on 2026-10-10); never run by a person | opening it on a real Windows machine is still untested |
 | Native drag-and-drop of files from Finder/Explorer | written, **not tested** | cannot drive a native drag from the dev environment |
 | `install.sh` on Linux, `install.ps1` on Windows | written, **never run** | the macOS path of `install.sh` was run |
 | Published release / version tag | **none** | the one-line install commands do not work until `v0.1.0` exists |
@@ -112,8 +112,7 @@ To test a package the way a user gets it (engines out of reach):
 ## Backlog, in the order I would do it
 
 **Next, needs the owner's go-ahead**
-1. Push the local commits (triggers `ci.yml`, free). This is the first compile of the
-   Windows window code; expect to fix something there.
+1. ~~Push the local commits~~ done 2026-10-10; CI green, Windows window code compiles.
 2. Owner reviews the real window (`pdfsqueeze ui`) and gives design feedback.
 3. Test `install.sh` (Linux) and `install.ps1` (Windows) in CI, then tag **`v0.1.0`**, which
    publishes the six packages and makes the one-line install commands work.
