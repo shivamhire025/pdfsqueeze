@@ -45,17 +45,28 @@ copy_with_dlls "$GS"
 copy_with_dlls "$QPDF"
 [ -n "$TESS" ] && copy_with_dlls "$TESS"
 
-# Ghostscript resources. MSYS2 uses share/ghostscript/<version>/
-GSSHARE="$(ls -d "$PREFIX"/share/ghostscript/*/ 2>/dev/null | sort | tail -1 || true)"
-if [ -n "$GSSHARE" ] && [ -d "$GSSHARE/Resource" ]; then
-  mkdir -p "$OUT/share/ghostscript"
-  cp -RL "$GSSHARE"/. "$OUT/share/ghostscript/"
-elif [ -d "$PREFIX/share/ghostscript/Resource" ]; then
-  mkdir -p "$OUT/share/ghostscript"
-  cp -RL "$PREFIX/share/ghostscript"/. "$OUT/share/ghostscript/"
-else
-  echo "error: Ghostscript resources not found under $PREFIX/share/ghostscript" >&2; exit 1
+# Ghostscript resources: find the folder that contains Resource/Init wherever
+# the package put it (the layout differs between distributions and versions).
+INIT="$(find "$PREFIX" -type d -path '*/Resource/Init' 2>/dev/null | head -1 || true)"
+if [ -z "$INIT" ]; then
+  echo "error: Ghostscript resources (Resource/Init) not found under $PREFIX" >&2
+  echo "--- files owned by the ghostscript package that mention Resource:" >&2
+  pacman -Ql mingw-w64-x86_64-ghostscript 2>/dev/null | grep -i "resource" | head -20 >&2 || true
+  echo "--- top of share/ghostscript:" >&2
+  ls -R "$PREFIX/share/ghostscript" 2>/dev/null | head -30 >&2 || true
+  exit 1
 fi
+GSROOT="$(dirname "$(dirname "$INIT")")"      # .../Resource/Init -> the folder holding Resource
+echo "ghostscript resources: $GSROOT"
+mkdir -p "$OUT/share/ghostscript"
+cp -RL "$GSROOT"/. "$OUT/share/ghostscript/"
+# lib/ (PostScript support files) and iccprofiles/ sometimes sit beside the version folder
+for d in lib iccprofiles; do
+  if [ ! -d "$OUT/share/ghostscript/$d" ]; then
+    other="$(find "$PREFIX/share/ghostscript" -maxdepth 2 -type d -name "$d" 2>/dev/null | head -1 || true)"
+    [ -n "$other" ] && cp -RL "$other" "$OUT/share/ghostscript/$d"
+  fi
+done
 # Substitute fonts, if the package ships them separately
 if [ -d "$PREFIX/share/fonts/urw-base35" ]; then
   mkdir -p "$OUT/share/ghostscript/fonts"

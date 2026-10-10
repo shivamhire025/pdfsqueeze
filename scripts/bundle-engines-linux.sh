@@ -44,14 +44,24 @@ done
 for f in "$OUT"/bin/*; do patchelf --set-rpath '$ORIGIN/../lib' "$f"; done
 for f in "$OUT"/lib/*;  do patchelf --set-rpath '$ORIGIN' "$f" 2>/dev/null || true; done
 
-# Ghostscript resources: Debian keeps them under /usr/share/ghostscript/<ver>/
-GSSHARE="$(ls -d /usr/share/ghostscript/*/ 2>/dev/null | sort | tail -1 || true)"
-if [ -n "$GSSHARE" ] && [ -d "$GSSHARE/Resource" ]; then
-  mkdir -p "$OUT/share/ghostscript"
-  cp -RL "$GSSHARE"/. "$OUT/share/ghostscript/"
-else
-  echo "error: could not find Ghostscript resources under /usr/share/ghostscript" >&2; exit 1
+# Ghostscript resources: find the folder containing Resource/Init wherever the
+# distribution put it (Debian: /usr/share/ghostscript/<version>/).
+INIT="$(find /usr/share /usr/lib /usr/local/share -type d -path '*/Resource/Init' 2>/dev/null | sort | tail -1 || true)"
+if [ -z "$INIT" ]; then
+  echo "error: Ghostscript resources (Resource/Init) not found" >&2
+  dpkg -L ghostscript libgs10-common 2>/dev/null | grep -i resource | head -20 >&2 || true
+  exit 1
 fi
+GSROOT="$(dirname "$(dirname "$INIT")")"
+echo "ghostscript resources: $GSROOT"
+mkdir -p "$OUT/share/ghostscript"
+cp -RL "$GSROOT"/. "$OUT/share/ghostscript/"
+for d in lib iccprofiles; do
+  if [ ! -d "$OUT/share/ghostscript/$d" ]; then
+    other="$(find /usr/share/ghostscript -maxdepth 2 -type d -name "$d" 2>/dev/null | sort | tail -1 || true)"
+    [ -n "$other" ] && cp -RL "$other" "$OUT/share/ghostscript/$d"
+  fi
+done
 # Standard-14 substitute fonts (urw-base35), used for PDFs that do not embed fonts.
 for d in /usr/share/fonts/opentype/urw-base35 /usr/share/fonts/type1/urw-base35 /usr/share/fonts/urw-base35; do
   if [ -d "$d" ]; then

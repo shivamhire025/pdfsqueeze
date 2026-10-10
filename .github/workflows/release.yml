@@ -36,17 +36,18 @@ jobs:
           - runner: macos-15-intel    # Intel (label may need updating)
             arch: x86_64
     runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - name: Install build-time engines (end users never need these)
         run: brew install ghostscript qpdf tesseract
       - run: cargo test --release
-      - run: ./scripts/package-macos.sh
+      - run: bash ./scripts/package-macos.sh
       - name: Smoke test the package with system engines out of reach
         run: |
           mkdir smoke && tar -xzf dist/pdfsqueeze-macos-${{ matrix.arch }}.tar.gz -C smoke
           SMOKE_REQUIRE_BUNDLED=1 env -i HOME="$HOME" PATH=/usr/bin:/bin \
-            ./scripts/smoke.sh smoke/pdfsqueeze/pdfsqueeze
+            bash ./scripts/smoke.sh smoke/pdfsqueeze/pdfsqueeze
       - uses: actions/upload-artifact@v4
         with:
           name: pdfsqueeze-macos-${{ matrix.arch }}
@@ -67,6 +68,7 @@ jobs:
           - runner: ubuntu-24.04-arm  # arm64 runners may be unavailable for private repos
             arch: arm64
     runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - name: Install build-time engines (end users never need these)
@@ -74,11 +76,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ghostscript qpdf tesseract-ocr tesseract-ocr-eng fonts-urw-base35 patchelf
       - run: cargo test --release
-      - run: ./scripts/package-linux.sh
+      - run: bash ./scripts/package-linux.sh
       - name: Smoke test inside a bare container with no engines installed
         run: |
           docker run --rm -v "$PWD:/w" -e SMOKE_REQUIRE_BUNDLED=1 ubuntu:22.04 \
-            /w/scripts/smoke.sh /w/dist/pdfsqueeze-linux-${{ matrix.arch }}/pdfsqueeze/pdfsqueeze
+            bash /w/scripts/smoke.sh /w/dist/pdfsqueeze-linux-${{ matrix.arch }}/pdfsqueeze/pdfsqueeze
       - uses: actions/upload-artifact@v4
         with:
           name: pdfsqueeze-linux-${{ matrix.arch }}
@@ -91,6 +93,7 @@ jobs:
 
   windows-x64:
     runs-on: windows-2022
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: msys2/setup-msys2@v2
@@ -108,12 +111,12 @@ jobs:
         shell: msys2 {0}
         env:
           PDFSQUEEZE_WIN_ARCH: x64
-        run: ./scripts/package-windows.sh
+        run: bash ./scripts/package-windows.sh
       - name: Smoke test the staged package with MSYS2 and Windows tools out of reach
         shell: bash
         run: |
           SMOKE_REQUIRE_BUNDLED=1 PATH="/usr/bin:/c/Windows/System32:/c/Windows" \
-            ./scripts/smoke.sh dist/pdfsqueeze-windows-x64/pdfsqueeze/pdfsqueeze.exe
+            bash ./scripts/smoke.sh dist/pdfsqueeze-windows-x64/pdfsqueeze/pdfsqueeze.exe
       - name: Zip
         shell: pwsh
         run: |
@@ -137,6 +140,7 @@ jobs:
   windows-x86:
     runs-on: windows-2022
     continue-on-error: true
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - run: rustup target add i686-pc-windows-msvc
@@ -147,19 +151,20 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
-          New-Item -ItemType Directory -Force -Path engines32 | Out-Null
           # qpdf: a 32-bit zip from its latest release
           $q = gh api repos/qpdf/qpdf/releases/latest | ConvertFrom-Json
           $qa = $q.assets | Where-Object { $_.name -match "msvc32.*\.zip$" } | Select-Object -First 1
-          if (-not $qa) { throw "no 32-bit qpdf zip in the latest qpdf release" }
+          if (-not $qa) { $q.assets | ForEach-Object { Write-Host "asset: $($_.name)" }; throw "no 32-bit qpdf zip in the latest qpdf release" }
           Invoke-WebRequest $qa.browser_download_url -OutFile qpdf32.zip
           Expand-Archive qpdf32.zip -DestinationPath qpdf32
-          # Ghostscript: the 32-bit installer, installed silently into a folder
+          # Ghostscript: unpack the 32-bit installer with 7-Zip (running it
+          # silently can hang on a runner)
           $g = gh api repos/ArtifexSoftware/ghostpdl-downloads/releases/latest | ConvertFrom-Json
           $ga = $g.assets | Where-Object { $_.name -match "w32\.exe$" } | Select-Object -First 1
-          if (-not $ga) { throw "no 32-bit Ghostscript installer in the latest release" }
+          if (-not $ga) { $g.assets | ForEach-Object { Write-Host "asset: $($_.name)" }; throw "no 32-bit Ghostscript installer in the latest release" }
           Invoke-WebRequest $ga.browser_download_url -OutFile gs32.exe
-          Start-Process -Wait -FilePath .\gs32.exe -ArgumentList "/S", "/D=$PWD\gs32"
+          7z x gs32.exe -ogs32 -y | Out-Null
+          Get-ChildItem gs32 -Recurse -Filter "gswin32c.exe" | ForEach-Object { Write-Host "found: $($_.FullName)" }
       - name: Stage package
         shell: pwsh
         run: |
@@ -167,20 +172,23 @@ jobs:
           $stage = "dist/pdfsqueeze-windows-x86/pdfsqueeze"
           New-Item -ItemType Directory -Force -Path "$stage/engines/bin", "$stage/engines/share/ghostscript" | Out-Null
           Copy-Item target/i686-pc-windows-msvc/release/pdfsqueeze.exe "$stage/pdfsqueeze.exe"
-          $gsdir = (Get-ChildItem gs32 -Directory | Where-Object Name -like "gs*" | Select-Object -First 1).FullName
-          if (-not $gsdir) { $gsdir = "gs32" }
-          Copy-Item "$gsdir/bin/*" "$stage/engines/bin" -Recurse
+          $gsexe = Get-ChildItem gs32 -Recurse -Filter "gswin32c.exe" | Select-Object -First 1
+          if (-not $gsexe) { throw "gswin32c.exe not found after unpacking the installer" }
+          $bin = $gsexe.Directory.FullName
+          $gsdir = $gsexe.Directory.Parent.FullName
+          Copy-Item "$bin/*" "$stage/engines/bin" -Recurse
           foreach ($d in "Resource", "lib", "iccprofiles", "fonts") {
             if (Test-Path "$gsdir/$d") { Copy-Item "$gsdir/$d" "$stage/engines/share/ghostscript/$d" -Recurse }
           }
-          $qbin = (Get-ChildItem qpdf32 -Recurse -Filter qpdf.exe | Select-Object -First 1).Directory.FullName
-          Copy-Item "$qbin/*" "$stage/engines/bin" -Recurse -Force
+          $qexe = Get-ChildItem qpdf32 -Recurse -Filter qpdf.exe | Select-Object -First 1
+          Copy-Item "$($qexe.Directory.FullName)/*" "$stage/engines/bin" -Recurse -Force
           Copy-Item LICENSE, README.md, AGENTS.md $stage
+          Get-ChildItem "$stage/engines/bin" | Select-Object -First 40 | ForEach-Object { Write-Host $_.Name }
       - name: Smoke test (no OCR in this build)
         shell: bash
         run: |
           SMOKE_SKIP_OCR=1 SMOKE_REQUIRE_BUNDLED=1 PATH="/usr/bin:/c/Windows/System32:/c/Windows" \
-            ./scripts/smoke.sh dist/pdfsqueeze-windows-x86/pdfsqueeze/pdfsqueeze.exe
+            bash ./scripts/smoke.sh dist/pdfsqueeze-windows-x86/pdfsqueeze/pdfsqueeze.exe
       - name: Zip
         shell: pwsh
         run: Compress-Archive -Path dist/pdfsqueeze-windows-x86/pdfsqueeze -DestinationPath dist/pdfsqueeze-windows-x86.zip
