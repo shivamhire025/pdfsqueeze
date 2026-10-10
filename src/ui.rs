@@ -25,6 +25,9 @@ const PAGE: &str = include_str!("ui.html");
 
 /// Largest single upload accepted (1 GiB).
 const MAX_UPLOAD: u64 = 1 << 30;
+/// Most pages the reorder grid shows previews for; longer files use a typed order.
+const PAGE_GRID_MAX: u32 = 200;
+
 /// Biggest JSON body for /api/run.
 const MAX_JSON: u64 = 1 << 20;
 
@@ -380,6 +383,53 @@ fn handle(state: &State, mut req: Request) {
                     let name = png.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
                     let resp = Response::from_file(f)
                         .with_header(header("Content-Type", content_type(&name)))
+                        .with_header(header("Cache-Control", "max-age=3600"));
+                    let _ = req.respond(resp);
+                }
+                Err(_) => respond_error(req, 404, "error", "no preview"),
+            }
+        }
+
+        // Page count of an uploaded PDF, rendering a preview of every page
+        // once (the page grid for reordering reads them via /api/pagethumb).
+        (Method::Get, "/api/pages") => {
+            let id = query_param(&query, "id").unwrap_or_default();
+            let path = state
+                .uploads
+                .lock()
+                .unwrap()
+                .iter()
+                .find(|u| u.id == id && u.kind == "pdf")
+                .map(|u| u.path.clone());
+            let Some(path) = path else {
+                return respond_error(req, 404, "input_not_found", "unknown PDF");
+            };
+            let count = match crate::pages::page_count(&path) {
+                Ok(n) => n,
+                Err(e) => return respond_error(req, 422, "error", &format!("{e:#}")),
+            };
+            let shown = count.min(PAGE_GRID_MAX);
+            let dir = state.session.join("pagethumbs");
+            if count <= PAGE_GRID_MAX && !dir.join(format!("{id}-1.png")).is_file() {
+                if let Err(e) = crate::convert::render_page_thumbnails(&path, &dir, &id, shown) {
+                    return respond_error(req, 422, "error", &format!("{e:#}"));
+                }
+            }
+            respond_json(req, 200, &json!({ "ok": true, "count": count, "max": PAGE_GRID_MAX }));
+        }
+
+        (Method::Get, "/api/pagethumb") => {
+            let id = query_param(&query, "id").unwrap_or_default();
+            let page = query_param(&query, "page").and_then(|p| p.parse::<u32>().ok()).unwrap_or(0);
+            let known = state.uploads.lock().unwrap().iter().any(|u| u.id == id);
+            if !known || page == 0 {
+                return respond_error(req, 404, "error", "no preview");
+            }
+            let png = state.session.join("pagethumbs").join(format!("{id}-{page}.png"));
+            match std::fs::File::open(&png) {
+                Ok(f) => {
+                    let resp = Response::from_file(f)
+                        .with_header(header("Content-Type", "image/png"))
                         .with_header(header("Cache-Control", "max-age=3600"));
                     let _ = req.respond(resp);
                 }

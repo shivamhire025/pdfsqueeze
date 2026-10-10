@@ -186,6 +186,29 @@ pub fn render_thumbnail(input: &Path, out_png: &Path) -> Result<()> {
     Ok(())
 }
 
+/// Small preview of every page (up to `max`), written as `<prefix>-<n>.png`
+/// (n starts at 1) inside `dir`. One Ghostscript run for all pages.
+pub fn render_page_thumbnails(input: &Path, dir: &Path, prefix: &str, max: u32) -> Result<()> {
+    let gs = engine::require("gs", "ghostscript")?;
+    std::fs::create_dir_all(dir)?;
+    let args: Vec<OsString> = vec![
+        "-q".into(),
+        "-dNOPAUSE".into(),
+        "-dBATCH".into(),
+        "-sDEVICE=png16m".into(),
+        "-r36".into(),
+        "-dTextAlphaBits=4".into(),
+        "-dGraphicsAlphaBits=4".into(),
+        "-dUseCropBox".into(),
+        "-dFirstPage=1".into(),
+        format!("-dLastPage={max}").into(),
+        out_arg(&dir.join(format!("{prefix}-%d.png"))),
+        input.into(),
+    ];
+    engine::run(&gs, &args)?;
+    Ok(())
+}
+
 /// Raw text of every page, index 0 = page 1. Includes invisible text such as
 /// an OCR layer.
 pub fn page_texts(input: &Path, total: u32) -> Result<Vec<String>> {

@@ -120,7 +120,7 @@ To test a package the way a user gets it (engines out of reach):
 **Soon**
 - Double-click launch: no arguments opens the window; Windows needs the GUI subsystem or
   `FreeConsole` so no terminal appears. App icon, `.app` bundle, Windows installer.
-- Native open and Save-As dialogs; reorder documents for merge; OCR progress in the window.
+- Native open and Save-As dialogs; reorder documents for merge (page reorder with real thumbnails and drag is done: verified in a browser with a synthetic mouse drag, **not** in the native window with a real hand); OCR progress in the window.
 - Verify native file drop and keyboard shortcuts on macOS and Windows with a person.
 - Test with real documents (scans, very large files, encrypted input, CJK).
 - Real MCP client test (Claude Desktop, Claude Code).

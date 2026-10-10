@@ -195,6 +195,25 @@
   dl.kv dt { color: var(--muted); } dl.kv dd { margin: 0; word-break: break-word; }
   pre.raw { background: var(--bg); padding: 12px; border-radius: 10px; overflow: auto; font-size: 12.5px; max-height: 220px; margin: 12px 0 0; }
 
+
+  /* ---- page grid (reorder) ---- */
+  .pg-bar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 0 0 12px; }
+  .pg-bar .btn { padding: 7px 13px; font-size: 14px; }
+  .pagegrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); gap: 14px; padding: 4px 0 6px; user-select: none; -webkit-user-select: none; }
+  .pg { border: 1px solid var(--line); background: var(--bg); border-radius: 12px; padding: 8px 8px 10px; cursor: grab; touch-action: none; display: grid; gap: 7px; position: relative; }
+  .pg:hover { border-color: var(--accent); }
+  .pg:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .pg.lifted { opacity: .3; border-style: dashed; }
+  .pg .frame { aspect-ratio: 3 / 4; background: var(--surface); border-radius: 6px; border: 1px solid var(--line); display: grid; place-items: center; overflow: hidden; }
+  .pg img { max-width: 100%; max-height: 100%; display: block; pointer-events: none; -webkit-user-drag: none; }
+  .pg .cap { display: flex; justify-content: space-between; align-items: baseline; gap: 6px; font-variant-numeric: tabular-nums; }
+  .pg .pos { font-weight: 700; font-size: 15px; }
+  .pg .was { color: var(--faint); font-size: 12px; }
+  .pg.moved { border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); background: var(--accent-soft); }
+  .pg.moved .was { color: var(--accent); font-weight: 600; }
+  .pg-ghost { position: fixed; z-index: 30; pointer-events: none; margin: 0; transform: rotate(2.5deg); box-shadow: var(--shadow); cursor: grabbing; opacity: .96; }
+  .pg-loading { color: var(--muted); padding: 18px 2px; }
+
   .veil { position: fixed; inset: 0; background: color-mix(in srgb, var(--accent) 16%, transparent); backdrop-filter: blur(3px); display: none; place-items: center; z-index: 10; pointer-events: none; }
   .veil.on { display: grid; }
   .veil div { background: var(--surface); border: 2px dashed var(--accent); border-radius: 22px; padding: 38px 54px; font-size: 22px; font-weight: 700; box-shadow: var(--shadow); }
@@ -445,7 +464,7 @@ function renderTask(v) {
       `<button type="button" class="preset" data-preset="${v2}" aria-pressed="${preset === v2}"><span class="bars">${b.map((h) => `<i style="height:${h}px"></i>`).join("")}</span><b>${t}</b><small>${d}</small></button>`).join("")}</div></div>`;
   }
 
-  const skip = (k) => HIDDEN.has(k) || FILE_ARGS.has(k) || k === "level" || k === "password_file";
+  const skip = (k) => HIDDEN.has(k) || FILE_ARGS.has(k) || k === "level" || k === "password_file" || (current.name === "reorder" && k === "order");
   const keys = Object.keys(props).filter((k) => !skip(k));
   const primary = PRIMARY[current.name] || [];
   const main = keys.filter((k) => required.has(k) || primary.includes(k));
@@ -453,6 +472,14 @@ function renderTask(v) {
   if ("password_file" in props) {
     html += `<div class="field"><label for="f_password">Password</label><input id="f_password" type="password" autocomplete="new-password">
       <div class="hint">${current.name === "unlock" ? "Leave blank if the file only has editing restrictions." : "Keep it somewhere safe: it cannot be recovered."}</div></div>`;
+  }
+  if (current.name === "reorder") {
+    html += `<div class="field"><span class="lbl">Pages</span>
+      <div class="hint" style="margin:0 0 10px">Drag a page to a new spot. With the keyboard, focus a page and use the arrow keys. Previews are of your actual pages.</div>
+      <div class="pg-bar" id="pgbar" hidden>
+        <button class="btn" type="button" id="pg-reverse">Reverse order</button>
+        <button class="btn" type="button" id="pg-reset">Reset</button></div>
+      <div id="pagearea"><div class="pg-loading">Loading page previews…</div></div></div>`;
   }
   html += main.map((k) => fieldHtml(k, props[k], required.has(k))).join("");
   if (extra.length) html += `<details class="more"><summary>More options</summary><div class="inner">${extra.map((k) => fieldHtml(k, props[k], false)).join("")}</div></details>`;
@@ -462,6 +489,7 @@ function renderTask(v) {
   v.innerHTML = html;
   if (result) renderResult();
   document.querySelector("main").scrollTop = 0;
+  if (current.name === "reorder") initPages();
 }
 
 function fieldHtml(key, p, required) {
@@ -495,8 +523,139 @@ $("view").addEventListener("click", (e) => {
 window.addEventListener("keydown", (e) => { if (e.key === "Escape" && current && !running) { current = null; result = null; saved = {}; render(); } });
 
 function openTool(name) {
-  current = tools.find((t) => t.name === name); result = null; saved = {}; preset = "recommended"; render();
+  current = tools.find((t) => t.name === name); result = null; saved = {}; preset = "recommended"; pg = { id: null, count: 0, order: [], status: "idle", nodes: new Map() }; render();
 }
+
+
+/* ---------- reorder: draggable page previews ---------- */
+let pg = { id: null, count: 0, order: [], status: "idle", nodes: new Map() };
+function pageDocId() {
+  const sel = document.getElementById("f_file");
+  return sel && sel.value ? sel.value : null;
+}
+async function initPages() {
+  const id = pageDocId();
+  const area = document.getElementById("pagearea");
+  if (!area) return;
+  if (!id) { area.innerHTML = '<div class="hint">Add a PDF first.</div>'; return; }
+  const sel = document.getElementById("f_file");
+  if (sel && !sel.dataset.pgBound) { sel.dataset.pgBound = "1"; sel.addEventListener("change", initPages); }
+  if (pg.id === id && pg.status === "ready") { drawPages(); return; }
+  pg = { id, count: 0, order: [], status: "loading", nodes: new Map() };
+  area.innerHTML = '<div class="pg-loading">Loading page previews…</div>';
+  let j;
+  try { j = await api("/api/pages?id=" + encodeURIComponent(id)); } catch (e) { j = { ok: false, error: { message: String(e) } }; }
+  if (pg.id !== id) return;
+  if (!j.ok) { pg.status = "error"; area.innerHTML = `<div class="hint">Could not load previews: ${esc((j.error && j.error.message) || "unknown error")}</div>`; return; }
+  pg.count = j.count;
+  if (j.count > j.max) {
+    pg.status = "toomany";
+    area.innerHTML = `<div class="hint">This file has ${j.count} pages, too many to preview. Type the new order instead.</div>` +
+      fieldHtml("order", (current.input_schema.properties || {}).order || { type: "string" }, true);
+    return;
+  }
+  pg.order = Array.from({ length: j.count }, (_, i) => i + 1);
+  pg.status = "ready";
+  drawPages();
+}
+function drawPages() {
+  const area = document.getElementById("pagearea");
+  if (!area || pg.status !== "ready") return;
+  const grid = document.createElement("div");
+  grid.className = "pagegrid"; grid.id = "pagegrid"; grid.setAttribute("role", "list");
+  for (let n = 1; n <= pg.count; n++) {
+    let node = pg.nodes.get(n);
+    if (!node) {
+      node = document.createElement("div");
+      node.className = "pg"; node.tabIndex = 0; node.dataset.page = String(n); node.setAttribute("role", "listitem");
+      node.innerHTML = `<div class="frame"><img alt="Page ${n}" draggable="false" src="/api/pagethumb?id=${encodeURIComponent(pg.id)}&page=${n}&t=${encodeURIComponent(TOKEN)}"></div>
+        <div class="cap"><span class="pos"></span><span class="was"></span></div>`;
+      pg.nodes.set(n, node);
+    }
+    grid.appendChild(node);
+  }
+  area.innerHTML = ""; area.appendChild(grid);
+  document.getElementById("pgbar").hidden = false;
+  layoutPages();
+}
+function layoutPages(focusPage) {
+  const grid = document.getElementById("pagegrid");
+  if (!grid) return;
+  pg.order.forEach((n, i) => {
+    const node = pg.nodes.get(n);
+    grid.appendChild(node);
+    node.querySelector(".pos").textContent = String(i + 1);
+    const moved = n !== i + 1;
+    node.classList.toggle("moved", moved);
+    node.querySelector(".was").textContent = moved ? "was " + n : "";
+    node.setAttribute("aria-label", `Page ${n}, now position ${i + 1} of ${pg.count}`);
+  });
+  if (focusPage) { const f = pg.nodes.get(focusPage); if (f) f.focus(); }
+}
+function movePage(n, toIndex) {
+  const from = pg.order.indexOf(n);
+  toIndex = Math.max(0, Math.min(pg.order.length - 1, toIndex));
+  if (from < 0 || from === toIndex) return;
+  pg.order.splice(from, 1); pg.order.splice(toIndex, 0, n);
+}
+(function wirePages() {
+  let drag = null;
+  const view = $("view");
+  view.addEventListener("pointerdown", (e) => {
+    const tile = e.target.closest(".pg");
+    if (!tile || e.button !== 0) return;
+    drag = { page: Number(tile.dataset.page), tile, x: e.clientX, y: e.clientY, active: false, ghost: null, dx: 0, dy: 0 };
+  });
+  window.addEventListener("pointermove", (e) => {
+    if (!drag) return;
+    if (!drag.active) {
+      if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < 5) return;
+      drag.active = true;
+      const r = drag.tile.getBoundingClientRect();
+      drag.dx = e.clientX - r.left; drag.dy = e.clientY - r.top;
+      const g = drag.tile.cloneNode(true);
+      g.classList.add("pg-ghost"); g.style.width = r.width + "px";
+      document.body.appendChild(g); drag.ghost = g;
+      drag.tile.classList.add("lifted");
+    }
+    drag.ghost.style.left = (e.clientX - drag.dx) + "px";
+    drag.ghost.style.top = (e.clientY - drag.dy) + "px";
+    const over = document.elementFromPoint(e.clientX, e.clientY);
+    const t = over && over.closest && over.closest(".pg");
+    if (t && t !== drag.tile) {
+      movePage(drag.page, pg.order.indexOf(Number(t.dataset.page)));
+      layoutPages();
+    }
+    const main = document.querySelector("main"), mr = main.getBoundingClientRect();
+    if (e.clientY < mr.top + 60) main.scrollTop -= 16;
+    else if (e.clientY > mr.bottom - 60) main.scrollTop += 16;
+  });
+  const end = () => {
+    if (!drag) return;
+    if (drag.ghost) drag.ghost.remove();
+    drag.tile.classList.remove("lifted");
+    drag = null;
+  };
+  window.addEventListener("pointerup", end);
+  window.addEventListener("pointercancel", end);
+  view.addEventListener("keydown", (e) => {
+    const tile = e.target.closest && e.target.closest(".pg");
+    if (!tile) return;
+    const n = Number(tile.dataset.page), i = pg.order.indexOf(n);
+    let to = null;
+    if (e.key === "ArrowLeft" || e.key === "ArrowUp") to = i - 1;
+    else if (e.key === "ArrowRight" || e.key === "ArrowDown") to = i + 1;
+    else if (e.key === "Home") to = 0;
+    else if (e.key === "End") to = pg.order.length - 1;
+    if (to === null) return;
+    e.preventDefault();
+    movePage(n, to); layoutPages(n);
+  });
+  view.addEventListener("click", (e) => {
+    if (e.target.closest("#pg-reverse")) { pg.order.reverse(); layoutPages(); }
+    else if (e.target.closest("#pg-reset")) { pg.order = pg.order.slice().sort((a, b) => a - b); layoutPages(); }
+  });
+})();
 
 /* ---------- run ---------- */
 async function run() {
@@ -512,6 +671,7 @@ async function run() {
     args[key] = (el.dataset.type === "integer" || el.dataset.type === "number") ? Number(val) : val;
   }
   if (current.name === "compress" && !args.target_size) args.level = preset;
+  if (current.name === "reorder" && pg.status === "ready") args.order = pg.order.join(",");
   const fileMap = {};
   if (fk) {
     let ids;
