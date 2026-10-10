@@ -88,10 +88,10 @@ Neither platform can be run from the Mac this was developed on, so everything ma
 | `bundle-tesseract-windows.sh`: MSYS2 Tesseract in its own `engines/tesseract/` folder | unverified |
 | `install.ps1` | unverified |
 | `release.yml`: macOS arm64 and Intel packages built and smoke-tested with system engines out of reach | verified (dry run #1) |
-| Linux packages build and run in a bare `ubuntu:22.04` container | **partly verified** (dry run #3): 36 of 47 checks passed; all 11 failures had one cause, Ubuntu 22.04's qpdf 10.6 lacks JSON v2 |
-| Linux: build a current qpdf from source in CI; arm64 on `ubuntu-22.04-arm` | written, **not yet re-run** |
+| Linux x86_64 and arm64 packages: build, then pass the full smoke test inside a bare `ubuntu:22.04` container with no engines installed | **verified** (dry run #4, run 38021396870). Dry run #3 had failed 11 of 47 because 22.04's qpdf 10.6 lacks JSON v2; fixed by building a current qpdf in CI |
 | `engine_too_old` guard: qpdf below 11 is rejected with a clear message | done, unit-tested and tried end to end |
-| `release.yml`: macOS arm64 + Intel | **verified** twice (dry runs #1 and #3) |
+| `release.yml`: macOS arm64 + Intel | **verified** three times (dry runs #1, #3, #4) |
+| Windows jobs in dry run #4 | failed at the unit-test compile step: a test used `std::os::unix` behind a runtime `cfg!`; fixed with `#[cfg(unix)]`. Packaging steps did not run, so **Windows x64 and x86 packaging is still pending a re-run** |
 | Linux packages tested inside a bare `ubuntu:22.04` container | in release.yml, unverified |
 | musl / Alpine Linux | not supported (needs a static or musl build) |
 | Windows 32-bit OCR | not possible with current Tesseract builds |

@@ -414,12 +414,12 @@ mod tests {
         assert_eq!(parse_qpdf_version("something else"), None);
     }
 
+    // A fake "qpdf" shell script that reports version 10. Unix only, and it must be
+    // #[cfg(unix)] (not a runtime `cfg!` check): std::os::unix does not exist on
+    // Windows, so the code has to be removed there, not just skipped.
+    #[cfg(unix)]
     #[test]
     fn old_qpdf_is_rejected_with_a_clear_message() {
-        // a fake "qpdf" that reports version 10 (unix only: needs a shell script)
-        if !cfg!(unix) {
-            return;
-        }
         use std::os::unix::fs::PermissionsExt;
         let dir = std::env::temp_dir().join(format!("pdfsqueeze-fakeqpdf-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();

@@ -24,7 +24,7 @@ See [AGENTS.md](AGENTS.md) for the full contract, MCP client configuration and r
 |---|---|---|
 | macOS, Apple Silicon | `curl -fsSL https://raw.githubusercontent.com/shivamhire025/pdfsqueeze/main/install.sh \| sh` | built and tested |
 | macOS, Intel | same command | built and smoke-tested in CI |
-| Linux x86_64 / arm64 | same command | tests and end-to-end pass in CI; package builds, fix for its qpdf pending re-run |
+| Linux x86_64 / arm64 | same command | built and smoke-tested in CI, in a bare container |
 | Windows 64-bit | `irm https://raw.githubusercontent.com/shivamhire025/pdfsqueeze/main/install.ps1 \| iex` | tests pass in CI; packaging reworked, not yet re-run |
 | Windows 32-bit | same command | package passes 44 of 45 smoke checks in CI (one was a test bug, fixed); no OCR (Tesseract has no 32-bit build) |
 
