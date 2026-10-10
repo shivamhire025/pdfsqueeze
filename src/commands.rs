@@ -198,6 +198,7 @@ pub fn command_name(c: &Cmd) -> &'static str {
         Cmd::Pdfa { .. } => "pdfa",
         Cmd::Doctor => "doctor",
         Cmd::Tools => "tools",
+        Cmd::Ui { .. } => "ui",
         Cmd::Mcp { .. } => "mcp",
     }
 }
@@ -700,6 +701,7 @@ pub fn execute(cmd: Cmd, ctx: &Ctx) -> Result<Done> {
         Cmd::Tools => Ok(agent::describe()),
 
         Cmd::Mcp { .. } => bail!("`mcp` runs as a server and cannot be called as a tool"),
+        Cmd::Ui { .. } => bail!("`ui` runs as a server and cannot be called as a tool"),
     }
 }
 

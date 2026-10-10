@@ -12,6 +12,7 @@ mod pages;
 mod pdfout;
 mod security;
 mod stamp;
+mod ui;
 mod util;
 
 use clap::error::ErrorKind;
@@ -60,6 +61,21 @@ fn main() {
         }
         let result = agent::PathPolicy::new(allow_dir, *allow_any_path).and_then(agent::serve);
         if let Err(e) = result {
+            eprintln!("error: {e:#}");
+            std::process::exit(1);
+        }
+        return;
+    }
+
+    if let Cmd::Ui { port, no_open, browser } = &cli.cmd {
+        let mode = if *no_open {
+            ui::Mode::ServerOnly
+        } else if *browser || !ui::window_available() {
+            ui::Mode::Browser
+        } else {
+            ui::Mode::Window
+        };
+        if let Err(e) = ui::serve(*port, mode) {
             eprintln!("error: {e:#}");
             std::process::exit(1);
         }

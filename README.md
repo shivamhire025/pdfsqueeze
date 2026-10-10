@@ -5,6 +5,24 @@ entirely on your own machine. Nothing is uploaded anywhere.
 
 > Working name. Early stage: CLI first, desktop app later. See [ROADMAP.md](ROADMAP.md).
 
+## The app window
+
+```bash
+pdfsqueeze ui
+```
+
+Opens pdfsqueeze in its own window (not a browser): drop PDFs or images on it, see a preview of
+each, pick what you want to do, and save the result to your Downloads folder. It has every tool
+the command line has. Everything runs on your computer; the window is served from a private
+port on your machine only and nothing is uploaded.
+
+- macOS and Windows get a native window (it uses the system's built-in web view; Windows needs
+  the Microsoft Edge WebView2 runtime, which is preinstalled on current Windows 10 and 11).
+- Linux has no built-in window yet, so `pdfsqueeze ui` opens your browser there.
+- `--browser` forces the browser, `--no-open` only prints the address.
+- Files you drop are used where they are (not copied). Saved results never overwrite an
+  existing file: you get `report (1).pdf`.
+
 ## For AI agents
 
 pdfsqueeze can be called by agents either as an MCP server or as a CLI with `--json`:

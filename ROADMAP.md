@@ -138,7 +138,24 @@ no current 32-bit Windows build) and shrinks the bundle.
 | Homebrew tap (`brew install`) for users who have brew | todo |
 | Windows and Linux packages | todo |
 
-## Phase 4: Desktop app
+## Phase 4: Desktop app (first version built; macOS verified, Windows not yet run)
+
+| Item | Status |
+|---|---|
+| `pdfsqueeze ui`: own application window via the system web view (wry + tao) | done; **verified on macOS**: window exists (1180x832), page loaded, menu bar present, Quit works, temp folder removed on exit |
+| macOS menu bar (About, Hide, Quit, Edit with Undo/Cut/Copy/Paste/Select All, Window), so Cmd+C/V/Q work | done, menu items verified; keystrokes not tested |
+| Redesign: document rail with page thumbnails, task tiles with icons, preset picker, before/after result view, empty state, light and dark | done; reviewed by screenshots in both themes |
+| All 22 tools from one schema (same definitions as CLI and agent mode) | done |
+| Native drag-and-drop of files (real paths, no copy) | written, **not tested** (cannot drive a Finder drag from here) |
+| Save to Downloads (never overwrites), Show in folder, Open | done; save verified, reveal/open not clicked |
+| Security: loopback only, per-run token, Host check, uploads capped, page cannot choose paths | done and tested |
+| Windows window (WebView2) | written, **never run**; first CI build will be its first compile |
+| Linux: opens the browser (no embedded web view) | by design for now |
+| Double-click launch (no arguments opens the window), app icon, `.app` bundle, installer | todo |
+| Native file picker dialog and "Save as" dialog | todo (file input and Downloads folder used instead) |
+| Reorder documents (merge order), page-level previews | todo |
+
+## Phase 4 (original notes)
 
 - Tauri shell (Rust backend reuses the CLI as a library)
 - Drag-and-drop, batch queue, progress

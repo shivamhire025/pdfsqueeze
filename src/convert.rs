@@ -165,6 +165,27 @@ pub fn render_page_gray(input: &Path, page: u32, dpi: u32, out_png: &Path) -> Re
     Ok(())
 }
 
+/// First page as a small PNG preview (about 340 px wide for a letter page).
+pub fn render_thumbnail(input: &Path, out_png: &Path) -> Result<()> {
+    let gs = engine::require("gs", "ghostscript")?;
+    let args: Vec<OsString> = vec![
+        "-q".into(),
+        "-dNOPAUSE".into(),
+        "-dBATCH".into(),
+        "-sDEVICE=png16m".into(),
+        "-r40".into(),
+        "-dTextAlphaBits=4".into(),
+        "-dGraphicsAlphaBits=4".into(),
+        "-dFirstPage=1".into(),
+        "-dLastPage=1".into(),
+        "-dUseCropBox".into(),
+        out_arg(out_png),
+        input.into(),
+    ];
+    engine::run(&gs, &args)?;
+    Ok(())
+}
+
 /// Raw text of every page, index 0 = page 1. Includes invisible text such as
 /// an OCR layer.
 pub fn page_texts(input: &Path, total: u32) -> Result<Vec<String>> {

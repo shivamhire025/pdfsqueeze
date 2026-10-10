@@ -1,0 +1,631 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>pdfsqueeze</title>
+<style>
+  /* Layout concept: a document rail on the left (real page thumbnails you pick from),
+     a task area on the right. One thing on screen at a time: choose, set, result. */
+  :root {
+    --bg: #eef1f6;        /* cool paper */
+    --rail: #f7f8fb;
+    --surface: #ffffff;
+    --ink: #0f1828;
+    --muted: #5b677a;
+    --faint: #8793a6;
+    --line: #dce1ea;
+    --accent: #2750e0;    /* cobalt */
+    --accent-ink: #ffffff;
+    --accent-soft: #e7edff;
+    --good: #117a55;
+    --good-soft: #e1f5ec;
+    --warn: #8f5500;
+    --warn-soft: #fff1d1;
+    --bad: #bf2f25;
+    --bad-soft: #fde9e6;
+    --shadow: 0 1px 2px rgba(15, 24, 40, .05), 0 10px 28px rgba(15, 24, 40, .07);
+    --radius: 14px;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0a0e16; --rail: #0f141e; --surface: #151b27; --ink: #e8edf6; --muted: #98a5ba; --faint: #6f7c91;
+      --line: #232c3c; --accent: #7f9cff; --accent-ink: #0a1024; --accent-soft: #1a2547;
+      --good: #4ed79f; --good-soft: #0f2a20; --warn: #f2c35b; --warn-soft: #2e2410; --bad: #ff8d83; --bad-soft: #321614;
+      --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 10px 28px rgba(0, 0, 0, .35);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0a0e16; --rail: #0f141e; --surface: #151b27; --ink: #e8edf6; --muted: #98a5ba; --faint: #6f7c91;
+    --line: #232c3c; --accent: #7f9cff; --accent-ink: #0a1024; --accent-soft: #1a2547;
+    --good: #4ed79f; --good-soft: #0f2a20; --warn: #f2c35b; --warn-soft: #2e2410; --bad: #ff8d83; --bad-soft: #321614;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 10px 28px rgba(0, 0, 0, .35);
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font: 15px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", Roboto, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased; overflow: hidden;
+  }
+  button { font: inherit; color: inherit; }
+  svg.i { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+  .app { display: grid; grid-template-columns: 308px minmax(0, 1fr); height: 100%; }
+  @media (max-width: 760px) { .app { grid-template-columns: 1fr; grid-template-rows: auto minmax(0, 1fr); } .rail { max-height: 38vh; } }
+
+  /* ---- rail ---- */
+  .rail { background: var(--rail); border-right: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; padding: 20px 16px 16px; gap: 14px; }
+  .brand { display: flex; align-items: center; gap: 10px; padding: 0 4px; }
+  .mark { width: 30px; height: 30px; border-radius: 9px; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; }
+  .brand b { font-size: 18px; letter-spacing: -.02em; font-weight: 700; }
+  .brand b span { color: var(--accent); }
+  .offline { margin: 0 4px; font-size: 12.5px; color: var(--good); display: flex; align-items: center; gap: 7px; font-weight: 600; }
+  .offline::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  .rail h2 { margin: 8px 4px 0; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--faint); font-weight: 700; }
+  .docs { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; overflow-y: auto; min-height: 0; flex: 1 1 auto; align-content: start; padding-bottom: 2px; }
+  .doc { display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 8px; border: 1px solid var(--line); background: var(--surface);
+         border-radius: 12px; cursor: pointer; text-align: left; width: 100%; }
+  .doc:hover { border-color: var(--accent); }
+  .doc:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .doc[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); background: var(--accent-soft); }
+  .thumb { width: 52px; height: 66px; border-radius: 6px; background: var(--bg); border: 1px solid var(--line); overflow: hidden; display: grid; place-items: center; color: var(--faint); }
+  .thumb img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
+  .doc .meta { min-width: 0; }
+  .doc .n { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .doc .s { color: var(--muted); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+  .x { border: 0; background: transparent; color: var(--faint); width: 26px; height: 26px; border-radius: 7px; cursor: pointer; display: grid; place-items: center; }
+  .x:hover { background: var(--bad-soft); color: var(--bad); }
+  .x:focus-visible { outline: 2px solid var(--accent); }
+  .add { border: 1.5px dashed var(--line); background: transparent; border-radius: 12px; padding: 12px; cursor: pointer; color: var(--muted); font-weight: 600;
+         display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .add:hover, .add:focus-visible { border-color: var(--accent); color: var(--accent); outline: none; }
+  .norail { color: var(--muted); font-size: 13.5px; margin: 0 4px; }
+
+  /* ---- main ---- */
+  main { overflow-y: auto; min-height: 0; }
+  .stage { max-width: 900px; margin: 0 auto; padding: 40px 44px 56px; }
+  @media (max-width: 760px) { .stage { padding: 24px 18px 40px; } }
+
+  .hero { display: grid; justify-items: start; gap: 6px; margin-bottom: 30px; }
+  .hero.empty { justify-items: center; text-align: center; padding: 34px 0 10px; }
+  .hero h1 { margin: 6px 0 0; font-size: 30px; line-height: 1.15; letter-spacing: -.025em; font-weight: 700; text-wrap: balance; }
+  .hero p { margin: 0; color: var(--muted); font-size: 16px; max-width: 52ch; }
+  .hero svg.art { width: 190px; height: auto; margin-bottom: 8px; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 9px; border-radius: 11px; font-weight: 650; cursor: pointer; border: 1px solid var(--line);
+         background: var(--surface); padding: 11px 18px; }
+  .btn:hover { border-color: var(--accent); }
+  .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); padding: 13px 24px; font-size: 16px; }
+  .btn.primary:hover { filter: brightness(1.07); }
+  .btn.primary:disabled { opacity: .6; cursor: progress; filter: none; }
+  .btn.good { background: var(--good); border-color: var(--good); color: #fff; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .btn.good { color: #052116; } }
+  .link { background: none; border: 0; color: var(--muted); cursor: pointer; padding: 6px 0; font-weight: 600; display: inline-flex; gap: 6px; align-items: center; }
+  .link:hover { color: var(--accent); }
+
+  .cats { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 18px; }
+  .cat { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 8px 15px; cursor: pointer; font-weight: 600; color: var(--muted); }
+  .cat:hover { color: var(--ink); border-color: var(--faint); }
+  .cat[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .cat:focus-visible, .tile:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(238px, 1fr)); gap: 14px; }
+  .tile { display: flex; gap: 14px; align-items: flex-start; text-align: left; border: 1px solid var(--line); background: var(--surface); border-radius: var(--radius);
+          padding: 16px; cursor: pointer; box-shadow: var(--shadow); transition: transform .12s, border-color .12s; }
+  .tile:hover { transform: translateY(-2px); border-color: var(--accent); }
+  .ico { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); flex: none; }
+  .tile b { display: block; font-size: 16px; letter-spacing: -.01em; }
+  .tile small { display: block; color: var(--muted); font-size: 13.5px; line-height: 1.4; margin-top: 2px; }
+  .foot { margin-top: 28px; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; color: var(--faint); font-size: 13px; }
+
+  /* ---- task ---- */
+  .task-head { display: flex; gap: 16px; align-items: center; margin: 4px 0 22px; }
+  .task-head .ico { width: 52px; height: 52px; border-radius: 15px; }
+  .task-head h1 { margin: 0; font-size: 26px; letter-spacing: -.02em; line-height: 1.2; }
+  .task-head p { margin: 2px 0 0; color: var(--muted); }
+  .sheet { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 22px; }
+  .field { margin: 0 0 20px; }
+  .field > label, .field > .lbl { display: block; font-weight: 650; margin-bottom: 7px; }
+  .field .hint { color: var(--muted); font-size: 13.5px; margin-top: 6px; }
+  .req { color: var(--bad); }
+  input[type=text], input[type=number], input[type=password], select {
+    width: 100%; padding: 11px 13px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); font: inherit;
+  }
+  input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent); }
+  .presets { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  @media (max-width: 620px) { .presets { grid-template-columns: 1fr; } }
+  .preset { text-align: left; border: 1px solid var(--line); background: var(--bg); border-radius: 12px; padding: 14px; cursor: pointer; }
+  .preset b { display: block; }
+  .preset small { color: var(--muted); display: block; margin-top: 2px; font-size: 13px; }
+  .preset .bars { display: flex; gap: 3px; align-items: flex-end; height: 22px; margin-bottom: 10px; }
+  .preset .bars i { width: 7px; background: var(--faint); border-radius: 2px; opacity: .55; }
+  .preset[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); background: var(--accent-soft); }
+  .preset[aria-pressed="true"] .bars i { background: var(--accent); opacity: 1; }
+  .preset:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .check { display: flex; gap: 10px; align-items: center; cursor: pointer; font-weight: 600; }
+  .check input { width: 18px; height: 18px; accent-color: var(--accent); }
+  details.more { margin: 2px 0 22px; }
+  details.more summary { cursor: pointer; font-weight: 650; color: var(--muted); }
+  details.more .inner { padding-top: 16px; }
+  .using { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 20px; }
+  .chip { display: inline-flex; gap: 8px; align-items: center; background: var(--accent-soft); color: var(--ink); border-radius: 999px; padding: 5px 12px; font-size: 13.5px; font-weight: 600; }
+  .runrow { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .progress { height: 6px; border-radius: 99px; background: var(--line); overflow: hidden; width: 220px; position: relative; }
+  .progress::after { content: ""; position: absolute; inset: 0 auto 0 0; width: 40%; background: var(--accent); border-radius: 99px; animation: slide 1.1s ease-in-out infinite; }
+  @keyframes slide { 0% { left: -40%; } 100% { left: 100%; } }
+  @media (prefers-reduced-motion: reduce) { .progress::after { animation: none; width: 100%; } .tile { transition: none; } }
+
+  /* ---- result ---- */
+  .result { margin: 0; }
+  .result.top:not(:empty) { margin: 0 0 20px; }
+  .banner { border-radius: var(--radius); padding: 22px; border: 1px solid var(--line); background: var(--surface); box-shadow: var(--shadow); }
+  .banner.good { border-color: color-mix(in srgb, var(--good) 45%, var(--line)); }
+  .banner.warn { border-color: color-mix(in srgb, var(--warn) 45%, var(--line)); background: var(--warn-soft); }
+  .banner.bad { border-color: color-mix(in srgb, var(--bad) 50%, var(--line)); background: var(--bad-soft); }
+  .banner h2 { margin: 0 0 4px; font-size: 18px; display: flex; gap: 10px; align-items: center; }
+  .banner.good h2 { color: var(--good); } .banner.warn h2 { color: var(--warn); } .banner.bad h2 { color: var(--bad); }
+  .banner p { margin: 0; }
+  .code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 12px; background: var(--bg); color: var(--muted); padding: 2px 7px; border-radius: 6px; }
+  .big { display: grid; gap: 4px; margin: 6px 0 18px; }
+  .big .pct { font-size: 46px; line-height: 1; font-weight: 750; letter-spacing: -.035em; color: var(--good); font-variant-numeric: tabular-nums; }
+  .big .sizes { color: var(--muted); font-size: 16px; font-variant-numeric: tabular-nums; }
+  .bars2 { display: grid; gap: 8px; margin: 0 0 18px; }
+  .bar { display: grid; grid-template-columns: 62px 1fr 74px; gap: 12px; align-items: center; font-size: 13.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .bar .track { height: 12px; background: var(--bg); border-radius: 99px; overflow: hidden; }
+  .bar .track { display: block; }
+  .bar .fill { display: block; height: 100%; border-radius: 99px; background: var(--faint); width: 0; transition: width .7s cubic-bezier(.2, .8, .2, 1); }
+  .bar.after .fill { background: var(--good); }
+  .bar b { color: var(--ink); text-align: right; }
+  .rows { display: grid; gap: 10px; margin: 8px 0 16px; }
+  .rowf { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 16px; align-items: center; padding: 12px 14px; border: 1px solid var(--line); border-radius: 11px; background: var(--bg); }
+  .rowf .nm { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rowf .sv { font-variant-numeric: tabular-nums; color: var(--muted); }
+  .rowf .sv.good { color: var(--good); font-weight: 700; }
+  .rowf .mini { grid-column: 1 / -1; height: 6px; background: var(--line); border-radius: 99px; overflow: hidden; }
+  .rowf .mini { display: block; }
+  .rowf .mini i { display: block; height: 100%; background: var(--good); border-radius: 99px; }
+  .actions { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .saved { color: var(--good); font-weight: 650; display: inline-flex; gap: 8px; align-items: center; }
+  .note { margin-top: 14px; padding: 10px 12px; border-radius: 10px; background: var(--warn-soft); color: var(--warn); font-size: 14px; }
+  dl.kv { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 18px; margin: 10px 0 0; }
+  dl.kv dt { color: var(--muted); } dl.kv dd { margin: 0; word-break: break-word; }
+  pre.raw { background: var(--bg); padding: 12px; border-radius: 10px; overflow: auto; font-size: 12.5px; max-height: 220px; margin: 12px 0 0; }
+
+  .veil { position: fixed; inset: 0; background: color-mix(in srgb, var(--accent) 16%, transparent); backdrop-filter: blur(3px); display: none; place-items: center; z-index: 10; pointer-events: none; }
+  .veil.on { display: grid; }
+  .veil div { background: var(--surface); border: 2px dashed var(--accent); border-radius: 22px; padding: 38px 54px; font-size: 22px; font-weight: 700; box-shadow: var(--shadow); }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-compress" viewBox="0 0 24 24"><path d="M4 9h5V4M20 9h-5V4M4 15h5v5M20 15h-5v5"/></symbol>
+    <symbol id="i-repair" viewBox="0 0 24 24"><path d="M14.5 6.5a4 4 0 0 0-5.2 5.2L4 17l3 3 5.3-5.3a4 4 0 0 0 5.2-5.2l-2.6 2.6-2.4-.6-.6-2.4z"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></symbol>
+    <symbol id="i-linearize" viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></symbol>
+    <symbol id="i-pdfa" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="5" rx="1"/><path d="M5 9v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9M10 13h4"/></symbol>
+    <symbol id="i-merge" viewBox="0 0 24 24"><path d="M12 3 3 8l9 5 9-5-9-5z"/><path d="m3 13 9 5 9-5"/></symbol>
+    <symbol id="i-split" viewBox="0 0 24 24"><path d="M12 3v18"/><rect x="3" y="5" width="6" height="14" rx="1.5"/><rect x="15" y="5" width="6" height="14" rx="1.5"/></symbol>
+    <symbol id="i-extract" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 14h6M12 11l3 3-3 3"/></symbol>
+    <symbol id="i-delete" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></symbol>
+    <symbol id="i-reorder" viewBox="0 0 24 24"><path d="M8 4v16M8 4 5 7M8 4l3 3M16 20V4M16 20l-3-3M16 20l3-3"/></symbol>
+    <symbol id="i-rotate" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></symbol>
+    <symbol id="i-to_images" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m21 16-5-5-9 9"/></symbol>
+    <symbol id="i-images_to_pdf" viewBox="0 0 24 24"><rect x="3" y="3" width="10" height="10" rx="1.5"/><path d="M13 8h5a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2v-6"/></symbol>
+    <symbol id="i-text" viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h14"/></symbol>
+    <symbol id="i-ocr" viewBox="0 0 24 24"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2M8 12h8"/></symbol>
+    <symbol id="i-protect" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></symbol>
+    <symbol id="i-unlock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 7.5-2"/></symbol>
+    <symbol id="i-strip_metadata" viewBox="0 0 24 24"><path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></symbol>
+    <symbol id="i-watermark" viewBox="0 0 24 24"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></symbol>
+    <symbol id="i-number_pages" viewBox="0 0 24 24"><path d="M5 9h14M5 15h14M10 4 8 20M16 4l-2 16"/></symbol>
+    <symbol id="i-doctor" viewBox="0 0 24 24"><path d="M3 12h4l2-6 4 12 2-6h6"/></symbol>
+    <symbol id="i-doc" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+    <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></symbol>
+    <symbol id="i-ok" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></symbol>
+    <symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 3 2 20h20z"/><path d="M12 10v5M12 18h.01"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+  </defs>
+</svg>
+
+<div class="app">
+  <aside class="rail" aria-label="Your documents">
+    <div class="brand"><span class="mark"><svg class="i" viewBox="0 0 24 24" style="width:18px;height:18px"><use href="#i-compress"/></svg></span><b>pdf<span>squeeze</span></b></div>
+    <div class="offline" title="Files are processed on this computer and never uploaded.">Offline. Files never leave this computer.</div>
+    <h2>Documents</h2>
+    <ul class="docs" id="docs"></ul>
+    <p class="norail" id="norail">Nothing here yet.</p>
+    <button class="add" id="add" type="button"><svg class="i"><use href="#i-plus"/></svg>Add files</button>
+    <input type="file" id="picker" multiple hidden>
+  </aside>
+  <main><div class="stage" id="view"></div></main>
+</div>
+<div class="veil" id="veil"><div>Drop to add your files</div></div>
+
+<script>
+"use strict";
+const TOKEN = new URLSearchParams(location.search).get("t") || "";
+
+const CATS = [
+  { id: "shrink", label: "Shrink and fix", tools: ["compress", "repair", "check", "linearize", "pdfa"] },
+  { id: "pages", label: "Pages", tools: ["merge", "split", "extract", "delete", "reorder", "rotate"] },
+  { id: "convert", label: "Convert", tools: ["to_images", "images_to_pdf", "text", "ocr"] },
+  { id: "secure", label: "Protect and clean", tools: ["protect", "unlock", "strip_metadata", "info"] },
+  { id: "stamp", label: "Stamp", tools: ["watermark", "number_pages"] },
+];
+const TITLE = {
+  compress: "Compress", repair: "Repair", check: "Check for problems", linearize: "Fast web view", pdfa: "Archive as PDF/A",
+  merge: "Merge", split: "Split", extract: "Extract pages", delete: "Delete pages", reorder: "Reorder pages", rotate: "Rotate pages",
+  to_images: "PDF to images", images_to_pdf: "Images to PDF", text: "Extract text", ocr: "Make searchable",
+  protect: "Add a password", unlock: "Remove a password", strip_metadata: "Remove metadata", info: "Inspect",
+  watermark: "Add a watermark", number_pages: "Number the pages", doctor: "Check setup",
+};
+const BLURB = {
+  compress: "Make a file smaller, or fit a size limit.", repair: "Rebuild a damaged PDF.", check: "Look for structural problems.",
+  linearize: "Let it start showing before it finishes downloading.", pdfa: "Convert for long-term storage.",
+  merge: "Join several PDFs into one.", split: "Break a PDF into parts.", extract: "Keep only the pages you pick.", delete: "Remove pages you do not need.",
+  reorder: "Put pages in a new order.", rotate: "Turn pages clockwise.",
+  to_images: "Save every page as a picture.", images_to_pdf: "Combine pictures into one PDF.", text: "Pull the words out of a PDF.",
+  ocr: "Turn scans into text you can search and copy.",
+  protect: "Lock it with strong encryption.", unlock: "Take a password off.", strip_metadata: "Remove author, title and edit history.",
+  info: "Pages, encryption and document details.", watermark: "Stamp text across every page.", number_pages: "Add page numbers.",
+  doctor: "See which engines are installed.",
+};
+// Fields the server decides itself (results folder, uploaded paths, password files).
+const HIDDEN = new Set(["output", "out_dir", "tessdata", "password_file", "recursive"]);
+const FILE_ARGS = new Set(["input", "inputs"]);
+const PRIMARY = { compress: ["target_size"], ocr: ["lang"] };
+const LABEL = { target_size: "Or fit under a size", lang: "Language", dpi: "Image resolution (dpi)", quality: "JPEG quality (1 to 100)",
+  pages: "Which pages", order: "New order", angle: "Turn by (degrees)", every: "A new file every N pages", ranges: "Ranges", text: "Text",
+  opacity: "Opacity (0 to 1)", size: "Font size", position: "Position", format: "Label", start: "First page number", part: "PDF/A part",
+  first: "First page", last: "Last page", layout: "Keep the column layout", all: "Recognise every page, even ones with text", jobs: "Pages at once", angle_: "" };
+const PLACEHOLDER = { target_size: "for example 2MB or 500KB", pages: "for example 1-3,7,z (z is the last page)", order: "for example 3,1,2",
+  ranges: "for example 1-3,4-9", text: "for example CONFIDENTIAL", lang: "eng", format: "for example Page {n} of {total}" };
+
+let tools = [], files = [], selected = new Set(), cat = "shrink", current = null, preset = "recommended";
+let result = null, running = false, saved = {};
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const ico = (n, cls = "i") => `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-${n}"/></svg>`;
+const human = (n) => { if (n < 1024) return n + " B"; const u = ["KB", "MB", "GB"]; let i = -1; do { n /= 1024; i++; } while (n >= 1024 && i < 2); return (n < 10 ? n.toFixed(1) : Math.round(n)) + " " + u[i]; };
+const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
+
+async function api(path, opts = {}) {
+  const r = await fetch(path, { ...opts, headers: { "X-Token": TOKEN, ...(opts.headers || {}) } });
+  return r.json();
+}
+const post = (path, body) => api(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+
+// A preview that cannot load becomes a plain document icon.
+document.addEventListener("error", (e) => {
+  const img = e.target;
+  if (img && img.tagName === "IMG" && img.closest(".thumb")) img.outerHTML = ico("doc");
+}, true);
+
+/* ---------- documents rail ---------- */
+function renderDocs() {
+  const ul = $("docs"); ul.innerHTML = "";
+  for (const f of files) {
+    const li = document.createElement("li");
+    const on = selected.has(f.id);
+    const thumb = (f.kind === "pdf" || f.kind === "image")
+      ? `<img alt="" loading="lazy" src="/api/thumb?id=${encodeURIComponent(f.id)}&t=${encodeURIComponent(TOKEN)}">`
+      : ico("doc");
+    const detail = [f.pages ? plural(f.pages, "page") : null, human(f.size)].filter(Boolean).join(" · ");
+    li.innerHTML = `<div class="doc" role="button" tabindex="0" aria-pressed="${on}" data-id="${esc(f.id)}" title="${esc(f.name)}">
+        <div class="thumb">${thumb}</div>
+        <div class="meta"><div class="n">${esc(f.name)}</div><div class="s">${esc(detail)}</div></div>
+        <button class="x" type="button" aria-label="Remove ${esc(f.name)}" data-remove="${esc(f.id)}">${ico("close")}</button>
+      </div>`;
+    ul.appendChild(li);
+  }
+  $("norail").classList.toggle("hidden", files.length > 0);
+}
+$("docs").addEventListener("click", async (e) => {
+  const rm = e.target.closest("[data-remove]");
+  if (rm) {
+    e.stopPropagation();
+    await post("/api/remove", { id: rm.dataset.remove });
+    files = files.filter((f) => f.id !== rm.dataset.remove); selected.delete(rm.dataset.remove);
+    renderDocs(); render(); return;
+  }
+  const d = e.target.closest(".doc");
+  if (d) { toggle(d.dataset.id); }
+});
+$("docs").addEventListener("keydown", (e) => {
+  if ((e.key === "Enter" || e.key === " ") && e.target.classList.contains("doc")) { e.preventDefault(); toggle(e.target.dataset.id); }
+});
+function toggle(id) { selected.has(id) ? selected.delete(id) : selected.add(id); renderDocs(); if (current) render(); }
+
+async function refreshFiles() {
+  const f = await api("/api/files");
+  if (!f.ok) return;
+  const known = new Set(files.map((x) => x.id));
+  for (const x of f.files) if (!known.has(x.id)) selected.add(x.id);
+  files = f.files;
+  renderDocs(); render();
+}
+async function upload(list) {
+  for (const file of list) {
+    try {
+      const j = await api("/api/upload?name=" + encodeURIComponent(file.name), { method: "POST", body: file });
+      if (j.ok) { files.push(j.file); selected.add(j.file.id); renderDocs(); render(); }
+      else showFatal(j.error);
+    } catch (e) { showFatal({ code: "error", message: String(e) }); }
+  }
+}
+const picker = $("picker");
+$("add").addEventListener("click", () => picker.click());
+picker.addEventListener("change", () => { upload([...picker.files]); picker.value = ""; });
+// Browser-style drops (only used when running in a browser; the app window delivers real paths).
+const veil = $("veil");
+window.addEventListener("dragover", (e) => { e.preventDefault(); veil.classList.add("on"); });
+window.addEventListener("dragleave", (e) => { if (!e.relatedTarget) veil.classList.remove("on"); });
+window.addEventListener("drop", (e) => { e.preventDefault(); veil.classList.remove("on"); if (e.dataTransfer && e.dataTransfer.files.length) upload([...e.dataTransfer.files]); });
+// Hooks the native window calls.
+window.native = { filesChanged: refreshFiles, dragging: (on) => veil.classList.toggle("on", !!on) };
+
+/* ---------- views ---------- */
+function render() {
+  const v = $("view");
+  if (current) { renderTask(v); return; }
+  renderHome(v);
+}
+
+function sheetArt() {
+  return `<svg class="art" viewBox="0 0 200 150" aria-hidden="true">
+    <rect x="46" y="22" width="92" height="116" rx="9" fill="var(--surface)" stroke="var(--line)" stroke-width="2" transform="rotate(-9 92 80)"/>
+    <rect x="58" y="14" width="92" height="116" rx="9" fill="var(--surface)" stroke="var(--line)" stroke-width="2" transform="rotate(4 104 72)"/>
+    <rect x="56" y="18" width="92" height="116" rx="9" fill="var(--surface)" stroke="var(--accent)" stroke-width="2.5"/>
+    <path d="M118 18h21a9 9 0 0 1 9 9v21z" fill="var(--accent-soft)"/>
+    <rect x="70" y="52" width="48" height="6" rx="3" fill="var(--line)"/><rect x="70" y="68" width="62" height="6" rx="3" fill="var(--line)"/>
+    <rect x="70" y="84" width="38" height="6" rx="3" fill="var(--line)"/>
+    <circle cx="150" cy="116" r="19" fill="var(--accent)"/><path d="M150 107v18M141 116h18" stroke="var(--accent-ink)" stroke-width="3" stroke-linecap="round"/>
+  </svg>`;
+}
+
+function renderHome(v) {
+  const byName = Object.fromEntries(tools.map((t) => [t.name, t]));
+  const empty = files.length === 0;
+  let head;
+  if (empty) {
+    head = `<div class="hero empty">${sheetArt()}
+      <h1>Drop a PDF to get started</h1>
+      <p>Compress, merge, convert, make scans searchable and more. It all happens on this computer, and nothing is uploaded.</p>
+      <div style="margin-top:14px"><button class="btn primary" id="choose" type="button">Choose files</button></div></div>`;
+  } else {
+    const use = selected.size ? plural(selected.size, "document") : "your documents";
+    head = `<div class="hero"><h1>What would you like to do?</h1><p>Using ${esc(use)}. Pick a document on the left to include or leave it out.</p></div>`;
+  }
+  const cats = CATS.map((c) => `<button class="cat" type="button" data-cat="${c.id}" aria-pressed="${c.id === cat}">${esc(c.label)}</button>`).join("");
+  const list = (CATS.find((c) => c.id === cat) || CATS[0]).tools.filter((n) => byName[n]);
+  const tiles = list.map((n) => `<button class="tile" type="button" data-tool="${n}">
+      <span class="ico">${ico(n)}</span><span><b>${esc(TITLE[n] || n)}</b><small>${esc(BLURB[n] || byName[n].description)}</small></span></button>`).join("");
+  v.innerHTML = `${head}<div class="cats" role="group" aria-label="Kinds of task">${cats}</div><div class="tiles">${tiles}</div>
+    <div class="foot"><span>Everything runs here. Close this window to stop.</span><button class="link" type="button" data-tool="doctor">${ico("doctor")} Check setup</button></div>`;
+}
+
+function fileArgKey() { return Object.keys(current.input_schema.properties || {}).find((k) => FILE_ARGS.has(k)); }
+
+function renderTask(v) {
+  const props = current.input_schema.properties || {};
+  const required = new Set(current.input_schema.required || []);
+  const fk = fileArgKey();
+  const multi = fk && props[fk].type === "array";
+  const chosen = files.filter((f) => selected.has(f.id));
+  let html = `<button class="link" type="button" id="back">${ico("back")} All tools</button>
+    <div class="task-head"><span class="ico">${ico(current.name)}</span><div><h1>${esc(TITLE[current.name] || current.name)}</h1><p>${esc(BLURB[current.name] || current.description)}</p></div></div>
+    <div class="result top" id="result" aria-live="polite"></div>
+    <div class="sheet"><form id="form" autocomplete="off" onsubmit="return false">`;
+
+  if (fk) {
+    if (!files.length) {
+      html += `<div class="field"><div class="lbl">Files</div><div class="hint">Add a file first, using Add files on the left.</div></div>`;
+    } else if (multi) {
+      html += `<div class="field"><span class="lbl">Using</span><div class="using">${
+        chosen.length ? chosen.map((f) => `<span class="chip">${ico("doc", "i")} ${esc(f.name)}</span>`).join("") : '<span class="hint">Pick documents on the left.</span>'}</div>
+        ${current.name === "merge" ? '<div class="hint">Joined in the order they appear on the left.</div>' : ""}</div>`;
+    } else {
+      const opts = (chosen.length ? chosen : files).map((f) => `<option value="${esc(f.id)}">${esc(f.name)}</option>`).join("");
+      html += `<div class="field"><label for="f_file">Document</label><select id="f_file">${opts}</select></div>`;
+    }
+  }
+
+  if (current.name === "compress") {
+    const P = [["low", "Light", "Best quality, smaller savings", [14, 17, 20, 22]], ["recommended", "Balanced", "Good for email and sharing", [10, 14, 17, 19]], ["extreme", "Smallest", "Screen quality, biggest savings", [5, 8, 11, 14]]];
+    html += `<div class="field"><span class="lbl">How small?</span><div class="presets" id="presets">${P.map(([v2, t, d, b]) =>
+      `<button type="button" class="preset" data-preset="${v2}" aria-pressed="${preset === v2}"><span class="bars">${b.map((h) => `<i style="height:${h}px"></i>`).join("")}</span><b>${t}</b><small>${d}</small></button>`).join("")}</div></div>`;
+  }
+
+  const skip = (k) => HIDDEN.has(k) || FILE_ARGS.has(k) || k === "level" || k === "password_file";
+  const keys = Object.keys(props).filter((k) => !skip(k));
+  const primary = PRIMARY[current.name] || [];
+  const main = keys.filter((k) => required.has(k) || primary.includes(k));
+  const extra = keys.filter((k) => !main.includes(k));
+  if ("password_file" in props) {
+    html += `<div class="field"><label for="f_password">Password</label><input id="f_password" type="password" autocomplete="new-password">
+      <div class="hint">${current.name === "unlock" ? "Leave blank if the file only has editing restrictions." : "Keep it somewhere safe: it cannot be recovered."}</div></div>`;
+  }
+  html += main.map((k) => fieldHtml(k, props[k], required.has(k))).join("");
+  if (extra.length) html += `<details class="more"><summary>More options</summary><div class="inner">${extra.map((k) => fieldHtml(k, props[k], false)).join("")}</div></details>`;
+
+  html += `<div class="runrow"><button class="btn primary" id="run" type="button" ${running ? "disabled" : ""}>${running ? "Working…" : "Run " + esc((TITLE[current.name] || "").toLowerCase())}</button>
+      ${running ? '<span class="progress" role="progressbar" aria-label="Working"></span>' : ""}</div></form></div>`;
+  v.innerHTML = html;
+  if (result) renderResult();
+  document.querySelector("main").scrollTop = 0;
+}
+
+function fieldHtml(key, p, required) {
+  const label = LABEL[key] || key.replace(/_/g, " ");
+  const req = required ? ' <span class="req" aria-hidden="true">*</span>' : "";
+  const hint = p.description ? `<div class="hint">${esc(p.description.replace(/\(file-system path\)/, "").trim())}</div>` : "";
+  const id = "f_" + key;
+  if (p.type === "boolean") return `<div class="field"><label class="check"><input type="checkbox" id="${id}" data-key="${key}" data-type="boolean"><span>${esc(label)}</span></label>${hint}</div>`;
+  if (p.enum) return `<div class="field"><label for="${id}">${esc(label)}${req}</label><select id="${id}" data-key="${key}"><option value="">Default</option>${p.enum.map((v) => `<option value="${esc(v)}">${esc(v)}</option>`).join("")}</select>${hint}</div>`;
+  const num = p.type === "integer" || p.type === "number";
+  return `<div class="field"><label for="${id}">${esc(label)}${req}</label><input id="${id}" data-key="${key}" data-type="${p.type}" type="${num ? "number" : "text"}" ${num ? 'step="any"' : ""} placeholder="${esc(PLACEHOLDER[key] || "")}">${hint}</div>`;
+}
+
+$("view").addEventListener("click", (e) => {
+  const c = e.target.closest("[data-cat]");
+  if (c) { cat = c.dataset.cat; render(); return; }
+  const t = e.target.closest("[data-tool]");
+  if (t) { openTool(t.dataset.tool); return; }
+  if (e.target.closest("#choose")) { picker.click(); return; }
+  if (e.target.closest("#back")) { current = null; result = null; saved = {}; render(); return; }
+  const p = e.target.closest("[data-preset]");
+  if (p) { preset = p.dataset.preset; document.querySelectorAll("[data-preset]").forEach((b) => b.setAttribute("aria-pressed", String(b === p))); return; }
+  if (e.target.closest("#run")) { run(); return; }
+  const s = e.target.closest("[data-save]");
+  if (s) { saveFile(s.dataset.save); return; }
+  const r = e.target.closest("[data-reveal]");
+  if (r) { post("/api/reveal", { path: r.dataset.reveal }); return; }
+  const o = e.target.closest("[data-open]");
+  if (o) { post("/api/open", { path: o.dataset.open }); return; }
+});
+window.addEventListener("keydown", (e) => { if (e.key === "Escape" && current && !running) { current = null; result = null; saved = {}; render(); } });
+
+function openTool(name) {
+  current = tools.find((t) => t.name === name); result = null; saved = {}; preset = "recommended"; render();
+}
+
+/* ---------- run ---------- */
+async function run() {
+  if (!current || running) return;
+  const props = current.input_schema.properties || {};
+  const fk = fileArgKey(), multi = fk && props[fk].type === "array";
+  const args = {};
+  for (const el of document.querySelectorAll("#form [data-key]")) {
+    const key = el.dataset.key;
+    if (el.dataset.type === "boolean") { if (el.checked) args[key] = true; continue; }
+    const val = el.value.trim();
+    if (val === "") continue;
+    args[key] = (el.dataset.type === "integer" || el.dataset.type === "number") ? Number(val) : val;
+  }
+  if (current.name === "compress" && !args.target_size) args.level = preset;
+  const fileMap = {};
+  if (fk) {
+    let ids;
+    if (multi) ids = files.filter((f) => selected.has(f.id)).map((f) => f.id);
+    else { const sel = document.getElementById("f_file"); ids = sel && sel.value ? [sel.value] : []; }
+    if (!ids.length) { result = { env: { ok: false, error: { code: "usage", message: "Add a document first, then try again." } } }; renderResult(); return; }
+    fileMap[fk] = ids;
+  }
+  running = true; result = null; saved = {}; render();
+  try {
+    const pw = document.getElementById("f_password");
+    const j = await post("/api/run", { tool: current.name, args, files: fileMap, password: pw ? pw.value : "" });
+    result = j.envelope ? { env: j.envelope, downloads: j.downloads || [], used: fileMap[fk] || [] } : { env: { ok: false, error: j.error } };
+  } catch (e) { result = { env: { ok: false, error: { code: "error", message: String(e) } } }; }
+  running = false; render();
+}
+
+/* ---------- results ---------- */
+const SUMMARY = {
+  ocr: (r) => r.ocr_pages === 0 ? `Nothing to do: all ${r.total_pages} pages already contain text.`
+    : `Recognised ${r.ocr_pages} of ${r.total_pages} pages${r.already_text_pages ? ` (${r.already_text_pages} already had text)` : ""}. ${r.characters.toLocaleString()} characters are now searchable.`,
+  merge: (r) => `Joined ${r.inputs} files into one PDF.`, split: (r) => `Split into ${r.count} files.`,
+  extract: (r) => `Kept ${plural(r.pages_kept, "page")}.`, delete: (r) => `${plural(r.pages_remaining, "page")} remain.`,
+  reorder: () => "Pages reordered.", rotate: (r) => `Rotated ${r.angle} degrees clockwise.`,
+  to_images: (r) => `Saved ${plural(r.count, "image")}.`, images_to_pdf: (r) => `Created a PDF with ${plural(r.pages, "page")}.`,
+  text: (r) => `Extracted ${r.characters.toLocaleString()} characters of text.`,
+  protect: () => "Locked with AES-256 encryption. Keep the password safe: it cannot be recovered.", unlock: () => "Password removed.",
+  strip_metadata: (r) => `Document info removed: ${r.removed_info ? "yes" : "none found"}. Hidden XMP metadata removed: ${r.removed_xmp ? "yes" : "none found"}.`,
+  watermark: (r) => `Watermarked ${plural(r.pages, "page")}.`, number_pages: (r) => `Numbered ${plural(r.pages, "page")}.`,
+  linearize: () => "Optimised for fast web viewing.",
+  pdfa: (r) => `Converted to PDF/A-${r.part}. ${r.declares_pdfa ? "It declares PDF/A" : "It does not declare PDF/A"}; this is best effort and not certified.`,
+  repair: (r) => r.clean ? `Repaired using ${r.method}.` : `Partly recovered using ${r.method}.${r.data_lost ? " Some content could not be recovered: the file looks incomplete." : ""}`,
+  check: (r) => ({ ok: "No problems found.", problems: "Readable, but has problems. Try Repair.", damaged: "Damaged. Try Repair." }[r.status] || ""),
+};
+function kv(obj) {
+  const rows = Object.entries(obj).filter(([, v]) => v !== null && v !== "" && !(Array.isArray(v) && !v.length))
+    .map(([k, v]) => `<dt>${esc(k.replace(/_/g, " "))}</dt><dd>${typeof v === "object" ? esc(JSON.stringify(v)) : esc(v)}</dd>`).join("");
+  return rows ? `<dl class="kv">${rows}</dl>` : "";
+}
+function saveRow(d) {
+  const s = saved[d.rel];
+  if (s) return `<span class="saved">${ico("ok")} Saved to Downloads</span>
+      <button class="btn" type="button" data-reveal="${esc(s.path)}">${ico("folder")} Show in folder</button>
+      <button class="btn" type="button" data-open="${esc(s.path)}">Open</button>`;
+  return `<button class="btn good" type="button" data-save="${esc(d.rel)}">Save ${esc(d.name)} <span style="opacity:.85">${human(d.size)}</span></button>`;
+}
+function renderResult() {
+  const box = document.getElementById("result");
+  if (!box || !result) return;
+  const env = result.env, dls = result.downloads || [];
+  if (!env.ok && env.error) {
+    box.innerHTML = `<div class="banner bad" role="alert"><h2>${ico("warn")} That did not work</h2><p>${esc(env.error.message || "Something went wrong.")}</p>
+      <p style="margin-top:10px"><span class="code">${esc(env.error.code || "error")}</span></p></div>`;
+    return;
+  }
+  const r = env.result || {}, partial = env.exit_code === 3;
+  let body = "";
+  if (env.command === "compress" && r.files) {
+    const ok = r.files.filter((f) => f.status === "ok" && !f.kept_original);
+    const sum = r.summary;
+    if (r.files.length === 1 && r.files[0].status === "ok") {
+      const f = r.files[0], pct = Math.max(0, f.saved_percent);
+      body += f.kept_original
+        ? `<div class="big"><span class="pct" style="color:var(--ink)">Already optimal</span><span class="sizes">${human(f.before_bytes)}: compressing would not make it smaller, so it was left as is.</span></div>`
+        : `<div class="big"><span class="pct">${pct}% smaller</span><span class="sizes">${human(f.before_bytes)} to ${human(f.after_bytes)}</span></div>
+           <div class="bars2"><div class="bar"><span>Before</span><span class="track"><span class="fill" data-w="100"></span></span><b>${human(f.before_bytes)}</b></div>
+           <div class="bar after"><span>After</span><span class="track"><span class="fill" data-w="${Math.max(2, 100 - pct)}"></span></span><b>${human(f.after_bytes)}</b></div></div>`;
+    } else {
+      body += `<div class="big"><span class="pct">${sum.saved_percent}% smaller</span><span class="sizes">${human(sum.before_bytes)} to ${human(sum.after_bytes)} across ${plural(sum.processed, "file")}</span></div>
+        <div class="rows">` + r.files.map((f) => f.status === "ok"
+          ? `<div class="rowf"><span class="nm">${esc(f.input.split(/[\\/]/).pop())}</span><span class="sv ${f.saved_percent > 0 ? "good" : ""}">${f.kept_original ? "already optimal" : human(f.before_bytes) + " to " + human(f.after_bytes)}</span>
+             <span class="mini"><i style="width:${f.kept_original ? 100 : Math.max(2, 100 - f.saved_percent)}%"></i></span></div>`
+          : `<div class="rowf"><span class="nm">${esc(f.input.split(/[\\/]/).pop())}</span><span class="sv" style="color:var(--bad)">${esc(f.error && f.error.message || "failed")}</span></div>`).join("") + `</div>`;
+    }
+  } else if (env.command === "doctor" && r.engines) {
+    body += `<div class="rows">` + r.engines.map((e) => `<div class="rowf"><span class="nm">${esc(e.name)}</span><span class="sv ${e.found ? "good" : ""}">${e.found ? (e.bundled ? "built in" : "found") : "missing"}</span></div>`).join("") + `</div>`;
+  } else if (env.command === "info") {
+    const { info, ...rest } = r;
+    body += kv({ pages: rest.pages, encrypted: rest.encrypted ? "yes" : "no", size: human(rest.size_bytes || 0), xmp_present: rest.xmp_present });
+    if (info && Object.keys(info).length) body += `<h3 style="margin:18px 0 0;font-size:15px">Document details</h3>` + kv(info);
+  } else if (env.command === "check" || env.command === "repair") {
+    body += `<p style="margin:2px 0 0">${esc(SUMMARY[env.command](r))}</p>`;
+    const msgs = r.messages || r.notes || [];
+    if (msgs.length) body += `<pre class="raw">${esc(msgs.slice(0, 12).join("\n"))}</pre>`;
+  } else if (SUMMARY[env.command]) {
+    body += `<p style="margin:2px 0 0">${esc(SUMMARY[env.command](r))}</p>`;
+  }
+  const warns = (env.warnings || []).map((w) => `<div class="note">${esc(w)}</div>`).join("");
+  const klass = partial ? "warn" : "good";
+  const title = partial ? "Finished, with problems" : "Done";
+  const actions = dls.length ? `<div class="actions" style="margin-top:16px">${dls.map(saveRow).join("")}</div>` : "";
+  box.innerHTML = `<div class="banner ${klass}"><h2>${ico(partial ? "warn" : "ok")} ${title}</h2>${body}${actions}${warns}</div>`;
+  // animate the bars from zero on the next frame
+  requestAnimationFrame(() => requestAnimationFrame(() => box.querySelectorAll(".fill[data-w]").forEach((el) => { el.style.width = el.dataset.w + "%"; })));
+}
+async function saveFile(rel) {
+  const j = await post("/api/save", { rel });
+  if (j.ok) { saved[rel] = { path: j.path, folder: j.folder }; renderResult(); }
+  else { result = { env: { ok: false, error: j.error } }; renderResult(); }
+}
+function showFatal(err) { result = { env: { ok: false, error: err } }; if (!current) { current = tools.find((t) => t.name === "doctor") || null; } render(); }
+
+/* ---------- start ---------- */
+(async function init() {
+  try {
+    const j = await api("/api/tools");
+    if (!j.ok) throw new Error((j.error && j.error.message) || "could not load tools");
+    tools = j.result.tools;
+    await refreshFiles();
+    render();
+  } catch (e) {
+    $("view").innerHTML = `<div class="banner bad"><h2>Could not start</h2><p>${esc(e.message || e)}</p></div>`;
+  }
+})();
+</script>
+</body>
+</html>

@@ -277,6 +277,18 @@ pub enum Cmd {
     },
     /// Check which engines are installed
     Doctor,
+    /// Open a point-and-click interface in your browser (runs locally, nothing is uploaded)
+    Ui {
+        /// Port to listen on (default: any free port)
+        #[arg(long)]
+        port: Option<u16>,
+        /// Only run the local server and print its address (no window)
+        #[arg(long)]
+        no_open: bool,
+        /// Use your web browser instead of an application window
+        #[arg(long)]
+        browser: bool,
+    },
     /// Describe every command as machine-readable tool schemas (for AI agents)
     Tools,
     /// Run as an MCP server over stdio so AI agents can call these commands as tools

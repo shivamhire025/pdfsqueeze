@@ -18,7 +18,7 @@ use std::io::{BufRead, Write};
 use std::path::{Component, Path, PathBuf};
 
 /// Commands that are not exposed as tools.
-const HIDDEN: &[&str] = &["help", "tools", "mcp"];
+const HIDDEN: &[&str] = &["help", "tools", "mcp", "ui"];
 
 /// Arguments that hold file-system paths (checked against the allow-list).
 const PATH_ARGS: &[&str] = &[
@@ -532,6 +532,7 @@ mod tests {
             assert!(names.contains(&n.to_string()), "missing tool {n}");
         }
         assert!(!names.contains(&"mcp".to_string()));
+        assert!(!names.contains(&"ui".to_string()));
         assert!(!names.contains(&"tools".to_string()));
     }
 
