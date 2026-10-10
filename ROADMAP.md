@@ -69,10 +69,19 @@ real-world use.
 | MCP progress notifications for long jobs (OCR) | todo |
 | Packaging for `npx` / `pip` installs | todo |
 
-## Phase 3.9: Windows and Linux (written, not yet run)
+## Phase 3.9: Windows and Linux (packages verified in CI)
 
-Neither platform can be run from the Mac this was developed on, so everything marked
-"unverified" below only gets tested by its first CI run.
+**Dry run #5 (run 38021880189, 2026-10-09): all six packages built and passed their smoke
+tests, and CI was green on every job.** Smoke test results: Windows x64 47/47 (including OCR),
+Windows x86 45/45 (no OCR), Linux x86_64 and arm64 47/47 each inside a bare `ubuntu:22.04`
+container, macOS arm64 and Intel 46/46. Minimum systems, read from the builds: macOS arm64 14+,
+**macOS Intel 15+** (GitHub's only Intel runner is macOS 15), Linux glibc 2.35+. Windows was
+only run on Windows Server 2022; older Windows versions are untested. Still never run: the
+installer scripts on Linux and Windows (`install.sh` on Linux, `install.ps1`), and Authenticode
+signing does not exist yet.
+
+Neither platform can be run from the Mac this was developed on, so these were developed
+against GitHub's runners. The table below keeps the history of what each run showed.
 
 | Item | Status |
 |---|---|
@@ -84,14 +93,14 @@ Neither platform can be run from the Mac this was developed on, so everything ma
 | `ci.yml`: tests on Linux/macOS/Windows, 32-bit Windows tests, end-to-end with apt engines | passed (run 38015649219 and the fixes run); now with timeouts and concurrency |
 | `bundle-engines-linux.sh` (ldd + patchelf, glibc floor), `package-linux.sh` | written, unverified |
 | `stage-windows.ps1`: official Ghostscript + qpdf unpacked with 7-Zip (x86) | **verified**: 44/45 smoke checks on the real 32-bit package (dry run #3); the one failure was a bug in the smoke check, fixed |
-| `stage-windows.ps1` (x64) | unverified; differs from x86 only in file name patterns |
-| `bundle-tesseract-windows.sh`: MSYS2 Tesseract in its own `engines/tesseract/` folder | unverified |
+| `stage-windows.ps1` (x64) | **verified** (dry run #5): 47/47 smoke checks |
+| `bundle-tesseract-windows.sh`: MSYS2 Tesseract in its own `engines/tesseract/` folder | **verified** (dry run #5): OCR passes in the Windows x64 package |
 | `install.ps1` | unverified |
 | `release.yml`: macOS arm64 and Intel packages built and smoke-tested with system engines out of reach | verified (dry run #1) |
 | Linux x86_64 and arm64 packages: build, then pass the full smoke test inside a bare `ubuntu:22.04` container with no engines installed | **verified** (dry run #4, run 38021396870). Dry run #3 had failed 11 of 47 because 22.04's qpdf 10.6 lacks JSON v2; fixed by building a current qpdf in CI |
 | `engine_too_old` guard: qpdf below 11 is rejected with a clear message | done, unit-tested and tried end to end |
 | `release.yml`: macOS arm64 + Intel | **verified** three times (dry runs #1, #3, #4) |
-| Windows jobs in dry run #4 | failed at the unit-test compile step: a test used `std::os::unix` behind a runtime `cfg!`; fixed with `#[cfg(unix)]`. Packaging steps did not run, so **Windows x64 and x86 packaging is still pending a re-run** |
+| Windows jobs in dry run #4 | failed at the unit-test compile step: a test used `std::os::unix` behind a runtime `cfg!`; fixed with `#[cfg(unix)]`; both Windows packages then passed in dry run #5 |
 | Linux packages tested inside a bare `ubuntu:22.04` container | in release.yml, unverified |
 | musl / Alpine Linux | not supported (needs a static or musl build) |
 | Windows 32-bit OCR | not possible with current Tesseract builds |
