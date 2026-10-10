@@ -12,12 +12,63 @@ use std::process::{Command, Output, Stdio};
 /// (Finder-launched apps get a minimal PATH).
 const EXTRA_DIRS: &[&str] = &["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin"];
 
+/// Folder holding the bundled engines (`bin/`, `lib/`, `share/`), if any.
+/// Checked in order: `$PDFSQUEEZE_ENGINES`, then `engines/` next to the
+/// executable (release tarball layout), then `../engines/`.
+pub fn bundle_dir() -> Option<PathBuf> {
+    let mut candidates: Vec<PathBuf> = Vec::new();
+    if let Some(p) = std::env::var_os("PDFSQUEEZE_ENGINES") {
+        candidates.push(PathBuf::from(p));
+    }
+    if let Ok(exe) = std::env::current_exe().and_then(|e| e.canonicalize()) {
+        if let Some(dir) = exe.parent() {
+            candidates.push(dir.join("engines"));
+            candidates.push(dir.join("../engines"));
+        }
+    }
+    candidates
+        .into_iter()
+        .find(|c| c.join("bin").is_dir())
+        .and_then(|c| c.canonicalize().ok())
+}
+
+/// Bundled engines win over anything on the system, so behaviour does not
+/// depend on whatever versions a machine happens to have installed.
 pub fn find(tool: &str) -> Option<PathBuf> {
+    if let Some(b) = bundle_dir() {
+        let p = b.join("bin").join(tool);
+        if p.is_file() {
+            return Some(p);
+        }
+    }
     let mut dirs: Vec<PathBuf> = std::env::var_os("PATH")
         .map(|p| std::env::split_paths(&p).collect())
         .unwrap_or_default();
     dirs.extend(EXTRA_DIRS.iter().map(PathBuf::from));
     dirs.into_iter().map(|d| d.join(tool)).find(|c| c.is_file())
+}
+
+pub fn is_bundled(tool: &Path) -> bool {
+    bundle_dir().is_some_and(|b| tool.starts_with(b.join("bin")))
+}
+
+/// A command for `tool`. Bundled engines are pointed at their own resources
+/// so they never look for (or depend on) a Homebrew install.
+fn command(tool: &Path) -> Command {
+    let mut c = Command::new(tool);
+    if let Some(b) = bundle_dir().filter(|b| tool.starts_with(b.join("bin"))) {
+        let gs = b.join("share").join("ghostscript");
+        let paths: Vec<String> = ["Resource/Init", "lib", "Resource/Font", "fonts"]
+            .iter()
+            .map(|d| gs.join(d).to_string_lossy().into_owned())
+            .collect();
+        c.env("GS_LIB", paths.join(":"));
+        let fc = b.join("etc").join("fonts.conf");
+        if fc.is_file() {
+            c.env("FONTCONFIG_FILE", fc);
+        }
+    }
+    c
 }
 
 pub fn require(tool: &str, brew_pkg: &str) -> Result<PathBuf> {
@@ -47,7 +98,7 @@ fn finish(tool: &Path, out: Output) -> Result<String> {
 
 /// Run `tool` and return its stdout.
 pub fn run(tool: &Path, args: &[OsString]) -> Result<String> {
-    let out = Command::new(tool)
+    let out = command(tool)
         .args(args)
         .output()
         .with_context(|| format!("failed to start {}", tool.display()))?;
@@ -58,7 +109,7 @@ pub fn run(tool: &Path, args: &[OsString]) -> Result<String> {
 /// to qpdf (`qpdf @-` reads its arguments from stdin) so they never appear
 /// in the process list.
 pub fn run_stdin(tool: &Path, args: &[OsString], stdin_data: &str) -> Result<String> {
-    let mut child = Command::new(tool)
+    let mut child = command(tool)
         .args(args)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -76,7 +127,7 @@ pub fn run_stdin(tool: &Path, args: &[OsString], stdin_data: &str) -> Result<Str
 
 /// Exit code only, for yes/no probes like `qpdf --is-encrypted`.
 pub fn exit_code(tool: &Path, args: &[OsString]) -> Result<i32> {
-    let st = Command::new(tool)
+    let st = command(tool)
         .args(args)
         .stdout(Stdio::null())
         .stderr(Stdio::null())

@@ -1,0 +1,60 @@
+# Builds self-contained macOS tarballs for Apple Silicon and Intel and
+# attaches them to a GitHub release when a version tag is pushed.
+#
+# NOT YET RUN: written but untested on GitHub's runners. Expect to adjust
+# runner labels or brew behaviour on the first real run.
+#
+# Why older runners: Homebrew compiles its libraries for the macOS it runs on,
+# and the bundle inherits that as its minimum macOS. Building on an older
+# runner is what lets the release run on older Macs.
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-14          # Apple Silicon, macOS 14
+            arch: arm64
+          - runner: macos-15-intel    # Intel (label may need updating)
+            arch: x86_64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build-time engines (end users never need these)
+        run: brew install ghostscript qpdf poppler
+
+      - name: Test
+        run: cargo test --release
+
+      - name: Package
+        run: ./scripts/package-macos.sh
+
+      - name: Smoke test the tarball with Homebrew hidden from PATH
+        run: |
+          mkdir smoke && tar -xzf dist/pdfsqueeze-macos-${{ matrix.arch }}.tar.gz -C smoke
+          env -i HOME="$HOME" PATH=/usr/bin:/bin smoke/pdfsqueeze/pdfsqueeze doctor
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pdfsqueeze-macos-${{ matrix.arch }}
+          path: dist/pdfsqueeze-macos-${{ matrix.arch }}.tar.gz*
+
+      - name: Attach to release
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 \
+            || gh release create "$GITHUB_REF_NAME" --generate-notes
+          gh release upload "$GITHUB_REF_NAME" dist/pdfsqueeze-macos-${{ matrix.arch }}.tar.gz* --clobber

@@ -50,6 +50,23 @@ real-world use.
 | PDF/A conversion | Ghostscript | todo |
 | Predictable JPEG quality control in compress | Ghostscript | todo |
 
+## Phase 3.5: Distribution without Homebrew  (built, partly verified)
+
+| Item | Status |
+|---|---|
+| `scripts/bundle-engines.sh`: copy engines + all libraries, make paths relative, ad-hoc sign, record min macOS | done, verified on this Mac |
+| Engine lookup prefers bundled engines; sets `GS_LIB` and fontconfig for them | done |
+| Tested with Homebrew blocked by a macOS sandbox and an empty environment (all commands, non-embedded fonts) | done |
+| `scripts/package-macos.sh`: tarball + sha256 + licences + AGPL source notice | done |
+| `install.sh`: no-password user install, quarantine-safe, refuses too-old macOS | done, tested with a local tarball |
+| GitHub Actions release for arm64 + Intel on older runners | written, **not run** |
+| Intel (x86_64) build | **untested** (needs the CI runner) |
+| macOS older than the CI runner (e.g. 11-13) | not supported; needs building every dependency from source |
+| First tagged release + making the repo public so `install.sh` works | todo |
+| Homebrew tap (`brew install`) for users who have brew | todo |
+| Poppler-data (CJK text encodings) bundled | todo |
+| Windows and Linux packages | todo |
+
 ## Phase 4: Desktop app
 
 - Tauri shell (Rust backend reuses the CLI as a library)
@@ -81,7 +98,12 @@ real-world use.
   because Ghostscript chooses lossless vs JPEG per image automatically. Results are
   always valid and under the target when reachable, but not always the highest quality
   that fits. Phase 3 adds explicit JPEG quality control.
-- Requires Ghostscript, qpdf, Poppler and Tesseract installed until Phase 4 bundles them.
+- Engines are bundled in release packages (see Phase 3.5). Building from source still needs
+  Homebrew's Ghostscript, qpdf and Poppler on the build machine.
+- Bundle size is about 60 MB installed (26 MB download); it includes Tesseract libraries that
+  Ghostscript links against.
+- CJK and other special text encodings in PDFs may not render or extract, because Poppler's
+  data package is not bundled yet.
 - Compress, merge, split and the page commands do not accept encrypted input yet; run
   `unlock` first.
 - Watermark and page-number text is limited to printable ASCII (standard Helvetica).

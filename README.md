@@ -5,19 +5,56 @@ entirely on your own machine. Nothing is uploaded anywhere.
 
 > Working name. Early stage: CLI first, desktop app later. See [ROADMAP.md](ROADMAP.md).
 
-## Requirements
-
-- Rust (`brew install rust`)
-- Engines: `brew install ghostscript qpdf poppler tesseract`
-
-Run `pdfsqueeze doctor` to see what is installed.
-
-## Build
+## Install (macOS, no Homebrew or anything else needed)
 
 ```bash
-cargo build --release
-./target/release/pdfsqueeze --help
+curl -fsSL https://raw.githubusercontent.com/shivamhire025/pdfsqueeze/main/install.sh | sh
 ```
+
+This downloads one package that already contains everything (Ghostscript, qpdf and Poppler
+are bundled), installs it under `~/.local/share/pdfsqueeze` and links `~/.local/bin/pdfsqueeze`.
+It needs no password and writes nothing outside your home folder. Works on Apple Silicon and
+Intel Macs. Check it with `pdfsqueeze doctor`.
+
+> Releases are not published yet, so the command above will not work until the first tagged
+> release exists (the repo is private for now). See "Releases" below.
+
+### "Unidentified developer" warnings
+
+pdfsqueeze is not signed with a paid Apple Developer certificate (it is free, open-source
+software). You normally will not see a warning: macOS only blocks files that carry a download
+quarantine flag, and `curl` does not set one. If you download the `.tar.gz` in a browser instead,
+macOS may refuse to run it; clear the flag once:
+
+```bash
+xattr -dr com.apple.quarantine ~/Downloads/pdfsqueeze
+```
+
+The binaries are ad-hoc signed (free), which is all Apple Silicon requires to run them.
+
+## Build from source
+
+Requires Rust and, on the build machine only, Homebrew engines:
+
+```bash
+brew install rust ghostscript qpdf poppler
+cargo build --release
+./target/release/pdfsqueeze doctor     # uses the Homebrew engines it finds
+```
+
+To produce the self-contained package yourself:
+
+```bash
+./scripts/package-macos.sh             # -> dist/pdfsqueeze-macos-<arch>.tar.gz
+```
+
+## Releases and macOS versions
+
+A package built on your own Mac only runs on that macOS version or newer, because Homebrew
+compiles its libraries for the OS it runs on (a package built on macOS 27 needs macOS 27+).
+Official releases are built by GitHub Actions on older runners (`.github/workflows/release.yml`,
+written but not yet run) to support older Macs. Each package records its floor in
+`engines/MIN_MACOS`, and `install.sh` refuses cleanly on a Mac that is too old.
 
 ## Usage
 

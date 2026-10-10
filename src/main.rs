@@ -563,7 +563,11 @@ fn run() -> Result<()> {
         Cmd::Doctor => {
             for (tool, pkg, needed_for) in engine::TOOLS {
                 match engine::find(tool) {
-                    Some(p) => println!("ok       {tool:<10} {}  ({needed_for})", p.display()),
+                    Some(p) => println!(
+                        "ok       {tool:<10} {}{}  ({needed_for})",
+                        p.display(),
+                        if engine::is_bundled(&p) { "  [bundled]" } else { "" }
+                    ),
                     None => println!("MISSING  {tool:<10} brew install {pkg}  ({needed_for})"),
                 }
             }
