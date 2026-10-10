@@ -24,9 +24,9 @@ See [AGENTS.md](AGENTS.md) for the full contract, MCP client configuration and r
 |---|---|---|
 | macOS, Apple Silicon | `curl -fsSL https://raw.githubusercontent.com/shivamhire025/pdfsqueeze/main/install.sh \| sh` | built and tested |
 | macOS, Intel | same command | built and smoke-tested in CI |
-| Linux x86_64 / arm64 | same command | tests and end-to-end pass in CI; packaging not yet verified |
-| Windows 64-bit | `irm https://raw.githubusercontent.com/shivamhire025/pdfsqueeze/main/install.ps1 \| iex` | tests pass in CI; packaging not yet verified |
-| Windows 32-bit | same command | experimental; no OCR (Tesseract has no 32-bit build) |
+| Linux x86_64 / arm64 | same command | tests and end-to-end pass in CI; package builds, fix for its qpdf pending re-run |
+| Windows 64-bit | `irm https://raw.githubusercontent.com/shivamhire025/pdfsqueeze/main/install.ps1 \| iex` | tests pass in CI; packaging reworked, not yet re-run |
+| Windows 32-bit | same command | package passes 44 of 45 smoke checks in CI (one was a test bug, fixed); no OCR (Tesseract has no 32-bit build) |
 
 Each package already contains everything (Ghostscript, qpdf and Tesseract are bundled). The
 installers need no password or administrator rights: they install under your home folder
@@ -54,7 +54,7 @@ pdfsqueeze is not signed with a paid certificate (it is free, open-source softwa
 Requires Rust and, on the build machine only, the three engines (Ghostscript, qpdf, Tesseract):
 
 ```bash
-brew install rust ghostscript qpdf tesseract
+brew install rust ghostscript qpdf tesseract   # qpdf must be 11 or newer
 cargo build --release
 ./target/release/pdfsqueeze doctor     # uses the Homebrew engines it finds
 ```
@@ -76,8 +76,8 @@ old. Every release job smoke-tests its own package (`scripts/smoke.sh`, 47 check
 system's engines out of reach before it is published.
 
 Build a package on your own machine with `scripts/package-macos.sh`,
-`scripts/package-linux.sh`, or (in an MSYS2 MINGW64 shell, after `cargo build --release`)
-`scripts/package-windows.sh`.
+`scripts/package-linux.sh`, or on Windows `scripts/stage-windows.ps1` (after
+`cargo build --release`) followed by `scripts/bundle-tesseract-windows.sh` in an MSYS2 MINGW64 shell.
 
 ## Usage
 

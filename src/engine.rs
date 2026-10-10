@@ -131,12 +131,20 @@ fn find_in(dir: &Path, tool: &str, os: Os) -> Option<PathBuf> {
         .find(|p| p.is_file())
 }
 
+/// Look for `tool` inside a bundle: `bin/` first, then a folder named after
+/// the tool. The second form lets an engine keep its own DLLs apart from the
+/// others (Windows loads DLLs from the executable's folder, and two engines
+/// can ship different builds of the same library).
+pub fn find_in_bundle(bundle: &Path, tool: &str, os: Os) -> Option<PathBuf> {
+    find_in(&bundle.join("bin"), tool, os).or_else(|| find_in(&bundle.join(tool), tool, os))
+}
+
 /// Bundled engines win over anything on the system, so behaviour does not
 /// depend on whatever versions a machine happens to have installed.
 pub fn find(tool: &str) -> Option<PathBuf> {
     let os = host_os();
     if let Some(b) = bundle_dir() {
-        if let Some(p) = find_in(&b.join("bin"), tool, os) {
+        if let Some(p) = find_in_bundle(&b, tool, os) {
             return Some(p);
         }
     }
@@ -148,7 +156,7 @@ pub fn find(tool: &str) -> Option<PathBuf> {
 }
 
 pub fn is_bundled(tool: &Path) -> bool {
-    bundle_dir().is_some_and(|b| tool.starts_with(b.join("bin")))
+    bundle_dir().is_some_and(|b| tool.starts_with(&b))
 }
 
 /// The folder inside a Ghostscript install/bundle that holds `Resource/Init`,
@@ -178,7 +186,7 @@ pub fn ghostscript_root(base: &Path) -> Option<PathBuf> {
 /// so they never look for (or depend on) a system install.
 fn command(tool: &Path) -> Command {
     let mut c = Command::new(tool);
-    if let Some(b) = bundle_dir().filter(|b| tool.starts_with(b.join("bin"))) {
+    if let Some(b) = bundle_dir().filter(|b| tool.starts_with(b)) {
         if let Some(gs) = ghostscript_root(&b) {
             let dirs: Vec<PathBuf> = ["Resource/Init", "lib", "Resource/Font", "fonts"]
                 .iter()
@@ -210,8 +218,44 @@ pub fn require(tool: &str, pkg: &str) -> Result<PathBuf> {
     })
 }
 
+/// Oldest qpdf we support: JSON output version 2 and `--update-from-json`
+/// arrived in qpdf 11. (Ubuntu 22.04 and Debian 11 still ship 10.x.)
+const MIN_QPDF_MAJOR: u32 = 11;
+
+/// "qpdf version 12.4.2" -> (12, 4, 2)
+pub fn parse_qpdf_version(output: &str) -> Option<(u32, u32, u32)> {
+    let rest = output.lines().find_map(|l| l.trim().strip_prefix("qpdf version "))?;
+    let mut it = rest.trim().split(|c: char| !c.is_ascii_digit());
+    let major = it.next()?.parse().ok()?;
+    let minor = it.next().and_then(|v| v.parse().ok()).unwrap_or(0);
+    let patch = it.next().and_then(|v| v.parse().ok()).unwrap_or(0);
+    Some((major, minor, patch))
+}
+
+fn check_qpdf_version(path: &Path) -> std::result::Result<(), String> {
+    let out = Command::new(path)
+        .arg("--version")
+        .output()
+        .map_err(|e| format!("could not run {}: {e}", path.display()))?;
+    let text = String::from_utf8_lossy(&out.stdout);
+    match parse_qpdf_version(&text) {
+        Some((major, minor, patch)) if major < MIN_QPDF_MAJOR => Err(format!(
+            "qpdf {major}.{minor}.{patch} at {} is too old: pdfsqueeze needs qpdf {MIN_QPDF_MAJOR} or newer. \
+             Use the pdfsqueeze package (it bundles a current qpdf) or upgrade qpdf",
+            path.display()
+        )),
+        _ => Ok(()), // new enough, or an unrecognised banner: do not block
+    }
+}
+
+/// qpdf, checked once per run for a supported version.
 pub fn qpdf() -> Result<PathBuf> {
-    require("qpdf", "qpdf")
+    static CHECKED: std::sync::OnceLock<std::result::Result<(), String>> = std::sync::OnceLock::new();
+    let path = require("qpdf", "qpdf")?;
+    match CHECKED.get_or_init(|| check_qpdf_version(&path)) {
+        Ok(()) => Ok(path),
+        Err(msg) => bail!("{msg}"),
+    }
 }
 
 /// qpdf exits 3 for "succeeded with warnings", which we treat as success.
@@ -360,6 +404,50 @@ mod tests {
         let unc = PathBuf::from(r"\\?\UNC\server\share");
         assert_eq!(plain_path(unc.clone()), unc);
         assert_eq!(plain_path(PathBuf::from("/usr/bin")), PathBuf::from("/usr/bin"));
+    }
+
+    #[test]
+    fn parses_qpdf_versions() {
+        assert_eq!(parse_qpdf_version("qpdf version 12.4.2\nRun qpdf --copyright"), Some((12, 4, 2)));
+        assert_eq!(parse_qpdf_version("qpdf version 10.6.3\n"), Some((10, 6, 3)));
+        assert_eq!(parse_qpdf_version("qpdf version 11.9.1-rc1"), Some((11, 9, 1)));
+        assert_eq!(parse_qpdf_version("something else"), None);
+    }
+
+    #[test]
+    fn old_qpdf_is_rejected_with_a_clear_message() {
+        // a fake "qpdf" that reports version 10 (unix only: needs a shell script)
+        if !cfg!(unix) {
+            return;
+        }
+        use std::os::unix::fs::PermissionsExt;
+        let dir = std::env::temp_dir().join(format!("pdfsqueeze-fakeqpdf-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let fake = dir.join("qpdf");
+        std::fs::write(&fake, "#!/bin/sh\necho 'qpdf version 10.6.3'\n").unwrap();
+        std::fs::set_permissions(&fake, std::fs::Permissions::from_mode(0o755)).unwrap();
+        let err = check_qpdf_version(&fake).unwrap_err();
+        assert!(err.contains("too old") && err.contains("11"), "{err}");
+        std::fs::write(&fake, "#!/bin/sh\necho 'qpdf version 12.4.2'\n").unwrap();
+        assert!(check_qpdf_version(&fake).is_ok());
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn engines_can_live_in_their_own_folder() {
+        let root = std::env::temp_dir().join(format!("pdfsqueeze-bundle-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(root.join("bin")).unwrap();
+        std::fs::create_dir_all(root.join("tesseract")).unwrap();
+        std::fs::write(root.join("bin/qpdf.exe"), b"x").unwrap();
+        std::fs::write(root.join("tesseract/tesseract.exe"), b"x").unwrap();
+        assert_eq!(find_in_bundle(&root, "qpdf", Os::Windows), Some(root.join("bin/qpdf.exe")));
+        assert_eq!(
+            find_in_bundle(&root, "tesseract", Os::Windows),
+            Some(root.join("tesseract/tesseract.exe"))
+        );
+        assert_eq!(find_in_bundle(&root, "gs", Os::Windows), None);
+        let _ = std::fs::remove_dir_all(root);
     }
 
     #[test]

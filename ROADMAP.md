@@ -83,9 +83,15 @@ Neither platform can be run from the Mac this was developed on, so everything ma
 | `scripts/smoke.sh`: 47 end-to-end checks, runs on any OS, can require bundled engines | done, passes on macOS |
 | `ci.yml`: tests on Linux/macOS/Windows, 32-bit Windows tests, end-to-end with apt engines | passed (run 38015649219 and the fixes run); now with timeouts and concurrency |
 | `bundle-engines-linux.sh` (ldd + patchelf, glibc floor), `package-linux.sh` | written, unverified |
-| `bundle-engines-windows.sh` (MSYS2 mingw64), `package-windows.sh`, `install.ps1` | written, unverified |
+| `stage-windows.ps1`: official Ghostscript + qpdf unpacked with 7-Zip (x86) | **verified**: 44/45 smoke checks on the real 32-bit package (dry run #3); the one failure was a bug in the smoke check, fixed |
+| `stage-windows.ps1` (x64) | unverified; differs from x86 only in file name patterns |
+| `bundle-tesseract-windows.sh`: MSYS2 Tesseract in its own `engines/tesseract/` folder | unverified |
+| `install.ps1` | unverified |
 | `release.yml`: macOS arm64 and Intel packages built and smoke-tested with system engines out of reach | verified (dry run #1) |
-| `release.yml`: Linux x86_64/arm64, Windows x64, Windows x86 packaging | fixed after dry run #1 (exec bits, Ghostscript resource lookup, hung installer), **not yet re-verified**: dry run #2 was cancelled |
+| Linux packages build and run in a bare `ubuntu:22.04` container | **partly verified** (dry run #3): 36 of 47 checks passed; all 11 failures had one cause, Ubuntu 22.04's qpdf 10.6 lacks JSON v2 |
+| Linux: build a current qpdf from source in CI; arm64 on `ubuntu-22.04-arm` | written, **not yet re-run** |
+| `engine_too_old` guard: qpdf below 11 is rejected with a clear message | done, unit-tested and tried end to end |
+| `release.yml`: macOS arm64 + Intel | **verified** twice (dry runs #1 and #3) |
 | Linux packages tested inside a bare `ubuntu:22.04` container | in release.yml, unverified |
 | musl / Alpine Linux | not supported (needs a static or musl build) |
 | Windows 32-bit OCR | not possible with current Tesseract builds |
@@ -154,6 +160,8 @@ no current 32-bit Windows build) and shrinks the bundle.
   because Ghostscript chooses lossless vs JPEG per image automatically. Results are
   always valid and under the target when reachable, but not always the highest quality
   that fits. Phase 3 adds explicit JPEG quality control.
+- pdfsqueeze needs qpdf 11 or newer (JSON output v2, `--update-from-json`). Packages bundle
+  one; building from source against an older system qpdf fails with `engine_too_old`.
 - Engines are bundled in release packages (see Phase 3.5). Building from source still needs
   Homebrew's Ghostscript, qpdf and Tesseract on the build machine.
 - Bundle size is about 60 MB installed (26 MB download); it includes Tesseract libraries that

@@ -43,8 +43,10 @@ has "qpdf found" '"name": "qpdf"'
 echo "$OUT" | grep -q '"found": false' && echo "  note  some engines are missing (see doctor)"
 if [ "${SMOKE_REQUIRE_BUNDLED:-0}" = "1" ]; then
   # packaged builds must use their own engines, never ones that happen to be installed
-  if echo "$OUT" | tr -d ' \n' | grep -q '"bundled":false'; then
-    bad "all found engines are bundled" "$(echo "$OUT" | grep -B2 -A2 '"bundled": false')"
+  # Keys are sorted, so a found-but-not-bundled engine reads "bundled":false,"found":true.
+  # (An engine that is simply absent, like Tesseract in the 32-bit build, is not a failure.)
+  if echo "$OUT" | tr -d ' \n' | grep -q '"bundled":false,"found":true'; then
+    bad "all found engines are bundled" "$(echo "$OUT" | grep -B2 -A2 '"found": true')"
   else
     ok "all found engines are bundled"
   fi

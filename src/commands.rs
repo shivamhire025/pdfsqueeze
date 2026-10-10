@@ -92,6 +92,7 @@ pub const ERROR_CODES: &[(&str, &str)] = &[
     ("invalid_argument", "A value is out of range or malformed (pages, sizes, angles, ...)"),
     ("engine_missing", "A required engine (Ghostscript, qpdf, ...) is not installed"),
     ("engine_failed", "An engine ran but reported an error"),
+    ("engine_too_old", "An installed engine is older than pdfsqueeze supports (qpdf 11+)"),
     ("damaged_input", "The PDF is too damaged to process"),
     ("password_required", "The file is encrypted, or a password is needed, and none was supplied"),
     ("invalid_password", "The supplied password is wrong"),
@@ -109,7 +110,9 @@ pub fn classify(e: &anyhow::Error) -> &'static str {
     }
     let m = format!("{e:#}").to_lowercase();
     let has = |s: &str| m.contains(s);
-    if has("not found. install it with") {
+    if has("is too old: pdfsqueeze needs") {
+        "engine_too_old"
+    } else if has("not found. install it with") {
         "engine_missing"
     } else if has("wrong password") || has("invalid password") {
         "invalid_password"
@@ -890,6 +893,10 @@ mod tests {
         assert_eq!(c("language `deu` is not installed. Available: eng."), "language_unavailable");
         assert_eq!(c("could not repair x.pdf: the file is too damaged."), "damaged_input");
         assert_eq!(c("/x/gs failed (exit status: 1):\nboom"), "engine_failed");
+        assert_eq!(
+            c("qpdf 10.6.3 at /usr/bin/qpdf is too old: pdfsqueeze needs qpdf 11 or newer."),
+            "engine_too_old"
+        );
         assert_eq!(c("something unexpected"), "error");
     }
 
