@@ -4,9 +4,11 @@
 Everything here was checked against the repo and CI on the date below; where something was
 only written and never run, it says so.
 
-- **Last updated:** 2026-10-10, at commit `0953bc8` (local `main`).
-- **Pushed:** `origin/main` is at `4eef85d`. Two local commits are **not pushed**: `b650a67`
-  (docs) and `0953bc8` (the desktop window and redesigned UI). Pushing triggers CI.
+- **Last updated:** 2026-10-10.
+- **Git state:** at the time of writing `origin/main` was `4eef85d` and everything after it was
+  local only (the verified-status docs, the desktop window and redesigned UI, and this file).
+  **Check the real state with `git log --oneline origin/main..HEAD`** rather than trusting this
+  line. Pushing triggers CI, which needs the owner's go-ahead.
 - **Repo:** https://github.com/shivamhire025/pdfsqueeze (public, AGPL-3.0)
 - **Local path:** `~/Projects/pdfsqueeze/` (the Obsidian vault only holds notes about it:
   `Wiki/Projects/pdfsqueeze.md` and `Wiki/log.md`)
@@ -110,7 +112,7 @@ To test a package the way a user gets it (engines out of reach):
 ## Backlog, in the order I would do it
 
 **Next, needs the owner's go-ahead**
-1. Push the two local commits (triggers `ci.yml`, free). This is the first compile of the
+1. Push the local commits (triggers `ci.yml`, free). This is the first compile of the
    Windows window code; expect to fix something there.
 2. Owner reviews the real window (`pdfsqueeze ui`) and gives design feedback.
 3. Test `install.sh` (Linux) and `install.ps1` (Windows) in CI, then tag **`v0.1.0`**, which
@@ -169,7 +171,7 @@ not running; Rust is from Homebrew. The owner's commit email is public in histor
 
 ## Open questions for the owner
 
-- OK to push the two local commits now (runs CI)?
+- OK to push the local commits now (runs CI)?
 - Tag `v0.1.0` and publish once the Windows window compiles and the installers are tested?
 - Happy with the new design? What would they change?
 - Apply for SignPath Foundation signing, or ship Windows unsigned for now?
