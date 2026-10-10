@@ -1,5 +1,8 @@
 # pdfsqueeze: working on this repo
 
+**Start with `HANDOFF.md`**: current status, how to run, module map, decisions, backlog and
+gotchas. Update it when you finish work.
+
 Offline PDF toolkit in Rust. Read `README.md` for usage, `AGENTS.md` for the tool contract
 (for agents that *use* pdfsqueeze), and `ROADMAP.md` for what is built and what is verified.
 This file is about how to work on the code without causing surprises.

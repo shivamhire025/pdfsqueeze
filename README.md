@@ -155,3 +155,8 @@ the exit code is 1 if anything failed. Hidden files and earlier `-compressed` re
 ## License
 
 AGPL-3.0-or-later, see [LICENSE](LICENSE). Ghostscript is AGPL, so this project is too.
+
+## Contributing and status
+
+See [HANDOFF.md](HANDOFF.md) for current status, architecture, backlog and known gotchas, and
+[ROADMAP.md](ROADMAP.md) for what is verified versus only written.
