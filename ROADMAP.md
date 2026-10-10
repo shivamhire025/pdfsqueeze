@@ -81,15 +81,16 @@ Neither platform can be run from the Mac this was developed on, so everything ma
 | `\\?\` path prefix stripped (Ghostscript cannot read it); `qpdf.exe` exit-code 3 handling | done |
 | `GS_LIB` built with `join_paths` (`;` on Windows); static CRT for MSVC builds | done |
 | `scripts/smoke.sh`: 47 end-to-end checks, runs on any OS, can require bundled engines | done, passes on macOS |
-| `ci.yml`: tests on Linux/macOS/Windows, 32-bit Windows tests, end-to-end with apt engines | written, unverified |
+| `ci.yml`: tests on Linux/macOS/Windows, 32-bit Windows tests, end-to-end with apt engines | passed (run 38015649219 and the fixes run); now with timeouts and concurrency |
 | `bundle-engines-linux.sh` (ldd + patchelf, glibc floor), `package-linux.sh` | written, unverified |
 | `bundle-engines-windows.sh` (MSYS2 mingw64), `package-windows.sh`, `install.ps1` | written, unverified |
-| `release.yml`: macOS arm64/Intel, Linux x86_64/arm64, Windows x64, Windows x86 | written, unverified |
+| `release.yml`: macOS arm64 and Intel packages built and smoke-tested with system engines out of reach | verified (dry run #1) |
+| `release.yml`: Linux x86_64/arm64, Windows x64, Windows x86 packaging | fixed after dry run #1 (exec bits, Ghostscript resource lookup, hung installer), **not yet re-verified**: dry run #2 was cancelled |
 | Linux packages tested inside a bare `ubuntu:22.04` container | in release.yml, unverified |
 | musl / Alpine Linux | not supported (needs a static or musl build) |
 | Windows 32-bit OCR | not possible with current Tesseract builds |
 | Windows ARM64 | not planned yet |
-| Authenticode signing via SignPath Foundation (free for open source; needs public repo) | todo |
+| Authenticode signing via SignPath Foundation (free for open source; the repo is now public, so this can be applied for) | todo |
 
 ## Phase 3.8: Three engines only (done)
 
@@ -117,7 +118,8 @@ no current 32-bit Windows build) and shrinks the bundle.
 | GitHub Actions release for arm64 + Intel on older runners | written, **not run** |
 | Intel (x86_64) build | **untested** (needs the CI runner) |
 | macOS older than the CI runner (e.g. 11-13) | not supported; needs building every dependency from source |
-| First tagged release + making the repo public so `install.sh` works | todo |
+| Repo made public (CI is free, `install.sh` can download) | done 2026-10-09 |
+| First tagged release | todo |
 | Homebrew tap (`brew install`) for users who have brew | todo |
 | Windows and Linux packages | todo |
 

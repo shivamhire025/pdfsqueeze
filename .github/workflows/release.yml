@@ -22,6 +22,12 @@ on:
 permissions:
   contents: write
 
+# Only one packaging run at a time; starting another cancels the first.
+# Every job below also has a timeout-minutes so a hang can never run for hours.
+concurrency:
+  group: release
+  cancel-in-progress: true
+
 env:
   GH_TOKEN: ${{ github.token }}
 
@@ -65,7 +71,7 @@ jobs:
         include:
           - runner: ubuntu-22.04      # oldest glibc we support
             arch: x86_64
-          - runner: ubuntu-24.04-arm  # arm64 runners may be unavailable for private repos
+          - runner: ubuntu-24.04-arm  # arm64 runners are free for public repositories
             arch: arm64
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 45

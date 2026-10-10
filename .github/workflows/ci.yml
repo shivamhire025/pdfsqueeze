@@ -7,6 +7,13 @@ on:
     branches: [main]
   pull_request:
 
+# A newer push cancels the run it supersedes, so quick successive pushes do not
+# stack up. (Free for a public repository; a private fork is metered: macOS
+# minutes count 10x, Windows 2x.)
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     strategy:
@@ -14,6 +21,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - name: Unit tests
@@ -23,6 +31,7 @@ jobs:
 
   windows-32bit:
     runs-on: windows-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - run: rustup target add i686-pc-windows-msvc
@@ -31,6 +40,7 @@ jobs:
 
   end-to-end-linux:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - name: Install engines

@@ -23,9 +23,9 @@ See [AGENTS.md](AGENTS.md) for the full contract, MCP client configuration and r
 | Platform | Command | Status |
 |---|---|---|
 | macOS, Apple Silicon | `curl -fsSL https://raw.githubusercontent.com/shivamhire025/pdfsqueeze/main/install.sh \| sh` | built and tested |
-| macOS, Intel | same command | built by CI, never run |
-| Linux x86_64 / arm64 | same command | scripts written, never run |
-| Windows 64-bit | `irm https://raw.githubusercontent.com/shivamhire025/pdfsqueeze/main/install.ps1 \| iex` | scripts written, never run |
+| macOS, Intel | same command | built and smoke-tested in CI |
+| Linux x86_64 / arm64 | same command | tests and end-to-end pass in CI; packaging not yet verified |
+| Windows 64-bit | `irm https://raw.githubusercontent.com/shivamhire025/pdfsqueeze/main/install.ps1 \| iex` | tests pass in CI; packaging not yet verified |
 | Windows 32-bit | same command | experimental; no OCR (Tesseract has no 32-bit build) |
 
 Each package already contains everything (Ghostscript, qpdf and Tesseract are bundled). The
@@ -34,7 +34,7 @@ installers need no password or administrator rights: they install under your hom
 your PATH. Check with `pdfsqueeze doctor`.
 
 > Releases are not published yet, so the commands above will not work until the first tagged
-> release exists (the repo is private for now). See "Releases" below.
+> release exists. See "Releases" below. Until then, build from source (next section).
 
 ### Security warnings
 
