@@ -81,12 +81,12 @@ To test a package the way a user gets it (engines out of reach):
 | `src/agent.rs` | Tool schemas generated from clap, MCP stdio server, folder allow-list (`PathPolicy`) |
 | `src/ui.rs`, `src/ui.html` | The app: local server (loopback, token, Host check), window module (wry + tao), macOS menu (muda), the whole page |
 | `src/engine.rs` | Finds and runs engines: bundled first, then PATH; `Os` parameter for testable Windows/Linux logic; qpdf version guard (needs 11+) |
-| `src/compress.rs`, `batch.rs` | Ghostscript compression (dpi + JPEG quality, monotonic target-size ladder); file/folder jobs |
-| `src/pages.rs`, `security.rs`, `stamp.rs`, `fix.rs`, `convert.rs`, `ocr.rs`, `imgpdf.rs`, `pdfout.rs` | Page ops and page geometry, passwords/metadata/info, watermark and numbering, check/repair/linearize/PDF-A, render and text via Ghostscript, OCR overlay, images to PDF, minimal PDF writer |
+| `src/compress.rs`, `src/batch.rs` | Ghostscript compression (dpi + JPEG quality, monotonic target-size ladder); file/folder jobs |
+| `src/pages.rs`, `src/security.rs`, `src/stamp.rs`, `src/fix.rs`, `src/convert.rs`, `src/ocr.rs`, `src/imgpdf.rs`, `src/pdfout.rs` | Page ops and page geometry, passwords/metadata/info, watermark and numbering, check/repair/linearize/PDF-A, render and text via Ghostscript, OCR overlay, images to PDF, minimal PDF writer |
 | `scripts/smoke.sh` | 47 end-to-end checks; runs on any OS; `SMOKE_REQUIRE_BUNDLED=1`, `SMOKE_SKIP_OCR=1` |
-| `scripts/bundle-engines.sh`, `package-macos.sh` | macOS bundling (dylib relocation, ad-hoc signing) |
-| `scripts/bundle-engines-linux.sh`, `package-linux.sh` | Linux bundling (ldd + patchelf; glibc floor recorded) |
-| `scripts/stage-windows.ps1`, `bundle-tesseract-windows.sh` | Windows: official Ghostscript + qpdf unpacked with 7-Zip; MSYS2 only for Tesseract |
+| `scripts/bundle-engines.sh`, `scripts/package-macos.sh` | macOS bundling (dylib relocation, ad-hoc signing) |
+| `scripts/bundle-engines-linux.sh`, `scripts/package-linux.sh` | Linux bundling (ldd + patchelf; glibc floor recorded) |
+| `scripts/stage-windows.ps1`, `scripts/bundle-tesseract-windows.sh` | Windows: official Ghostscript + qpdf unpacked with 7-Zip; MSYS2 only for Tesseract |
 | `install.sh`, `install.ps1` | One-line installers (no admin, no password) |
 | `.github/workflows/ci.yml`, `release.yml` | CI on every push; release builds by hand or on a `v*` tag |
 | `README.md`, `AGENTS.md`, `ROADMAP.md`, `CLAUDE.md` | Users, agents that call the tool, status tables, rules for working in the repo |
