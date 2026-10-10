@@ -5,6 +5,8 @@
 use crate::engine;
 use crate::util::ensure_distinct;
 use anyhow::{bail, Context, Result};
+use serde_json::{Map, Value};
+use std::collections::HashSet;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 
@@ -17,6 +19,115 @@ pub fn page_count(input: &Path) -> Result<u32> {
     out.trim()
         .parse()
         .with_context(|| format!("could not read page count of {}", input.display()))
+}
+
+
+/// Displayed (width, height) in points of every page, in order.
+///
+/// Read from the page tree with inheritance resolved: MediaBox, CropBox and
+/// Rotate may sit on a parent /Pages node. The visible area is the CropBox
+/// when present, otherwise the MediaBox; 90/270 degree rotation swaps the two.
+pub fn page_sizes(input: &Path) -> Result<Vec<(f64, f64)>> {
+    let out = engine::run(
+        &qpdf()?,
+        &["--json=2".into(), "--json-key=qpdf".into(), input.into()],
+    )?;
+    let v: Value = serde_json::from_str(&out).context("could not parse qpdf JSON")?;
+    let objs = v["qpdf"][1]
+        .as_object()
+        .context("unexpected qpdf JSON shape")?;
+    sizes_from_objects(objs)
+}
+
+#[derive(Clone, Default)]
+struct Inherited {
+    media: Option<[f64; 4]>,
+    crop: Option<[f64; 4]>,
+    rotate: Option<i64>,
+}
+
+fn obj_value<'a>(objs: &'a Map<String, Value>, r: &str) -> Option<&'a Value> {
+    objs.get(&format!("obj:{r}")).map(|o| &o["value"])
+}
+
+fn as_number(objs: &Map<String, Value>, v: &Value) -> Option<f64> {
+    match v {
+        Value::Number(n) => n.as_f64(),
+        Value::String(s) if s.ends_with(" R") => obj_value(objs, s).and_then(|x| as_number(objs, x)),
+        _ => None,
+    }
+}
+
+fn as_box(objs: &Map<String, Value>, v: &Value) -> Option<[f64; 4]> {
+    let arr = match v {
+        Value::Array(a) => a,
+        Value::String(s) if s.ends_with(" R") => obj_value(objs, s)?.as_array()?,
+        _ => return None,
+    };
+    if arr.len() != 4 {
+        return None;
+    }
+    let mut b = [0.0; 4];
+    for (i, x) in arr.iter().enumerate() {
+        b[i] = as_number(objs, x)?;
+    }
+    Some(b)
+}
+
+pub fn sizes_from_objects(objs: &Map<String, Value>) -> Result<Vec<(f64, f64)>> {
+    let root_ref = objs
+        .get("trailer")
+        .and_then(|t| t["value"]["/Root"].as_str())
+        .context("document has no /Root")?;
+    let catalog = obj_value(objs, root_ref).context("catalog not found")?;
+    let pages_ref = catalog["/Pages"].as_str().context("document has no page tree")?;
+
+    let mut out = Vec::new();
+    let mut seen: HashSet<String> = HashSet::new();
+    walk(objs, pages_ref, Inherited::default(), &mut seen, &mut out, 0)?;
+    Ok(out)
+}
+
+fn walk(
+    objs: &Map<String, Value>,
+    node_ref: &str,
+    mut inh: Inherited,
+    seen: &mut HashSet<String>,
+    out: &mut Vec<(f64, f64)>,
+    depth: usize,
+) -> Result<()> {
+    if depth > 64 || !seen.insert(node_ref.to_string()) {
+        bail!("page tree is malformed (loop or too deep)");
+    }
+    let node = obj_value(objs, node_ref).context("page tree node not found")?;
+    if let Some(m) = node.get("/MediaBox").and_then(|v| as_box(objs, v)) {
+        inh.media = Some(m);
+    }
+    if let Some(c) = node.get("/CropBox").and_then(|v| as_box(objs, v)) {
+        inh.crop = Some(c);
+    }
+    if let Some(r) = node.get("/Rotate").and_then(|v| as_number(objs, v)) {
+        inh.rotate = Some(r as i64);
+    }
+
+    if let Some(kids) = node.get("/Kids").and_then(Value::as_array) {
+        for k in kids {
+            if let Some(r) = k.as_str() {
+                walk(objs, r, inh.clone(), seen, out, depth + 1)?;
+            }
+        }
+        return Ok(());
+    }
+
+    // a leaf page
+    let b = inh.crop.or(inh.media).unwrap_or([0.0, 0.0, 612.0, 792.0]);
+    let (mut w, mut h) = ((b[2] - b[0]).abs(), (b[3] - b[1]).abs());
+    let rot = inh.rotate.unwrap_or(0).rem_euclid(360);
+    if rot == 90 || rot == 270 {
+        std::mem::swap(&mut w, &mut h);
+    }
+    out.push((w, h));
+    Ok(())
 }
 
 /// Parse a page spec like `1-3,7,z` (1-based, `z` = last page).
@@ -197,6 +308,38 @@ mod tests {
         assert_eq!(parse_page_spec("8-z", 10).unwrap(), vec![8, 9, 10]);
         assert_eq!(parse_page_spec("3,1,2", 3).unwrap(), vec![3, 1, 2]);
         assert_eq!(parse_page_spec("5-3", 10).unwrap(), vec![5, 4, 3]);
+    }
+
+    fn objs(j: Value) -> Map<String, Value> {
+        j.as_object().unwrap().clone()
+    }
+
+    #[test]
+    fn sizes_inherit_crop_and_rotate() {
+        let o = objs(serde_json::json!({
+            "trailer": { "value": { "/Root": "1 0 R" } },
+            "obj:1 0 R": { "value": { "/Pages": "2 0 R" } },
+            // MediaBox + Rotate inherited from the root of the page tree
+            "obj:2 0 R": { "value": { "/Kids": ["3 0 R", "4 0 R", "5 0 R"], "/MediaBox": [0, 0, 612, 792], "/Rotate": 90 } },
+            "obj:3 0 R": { "value": { "/Type": "/Page" } },
+            "obj:4 0 R": { "value": { "/Type": "/Page", "/Rotate": 0, "/MediaBox": [0, 0, 595.28, 841.89] } },
+            "obj:5 0 R": { "value": { "/Type": "/Page", "/Rotate": 0, "/CropBox": [10, 10, 210, 310] } },
+        }));
+        let s = sizes_from_objects(&o).unwrap();
+        assert_eq!(s.len(), 3);
+        assert_eq!(s[0], (792.0, 612.0)); // inherited 612x792 rotated 90
+        assert!((s[1].0 - 595.28).abs() < 1e-9 && (s[1].1 - 841.89).abs() < 1e-9);
+        assert_eq!(s[2], (200.0, 300.0)); // CropBox wins
+    }
+
+    #[test]
+    fn page_tree_loop_is_an_error() {
+        let o = objs(serde_json::json!({
+            "trailer": { "value": { "/Root": "1 0 R" } },
+            "obj:1 0 R": { "value": { "/Pages": "2 0 R" } },
+            "obj:2 0 R": { "value": { "/Kids": ["2 0 R"] } },
+        }));
+        assert!(sizes_from_objects(&o).is_err());
     }
 
     #[test]

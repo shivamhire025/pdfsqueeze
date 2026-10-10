@@ -28,9 +28,9 @@ real-world use.
 
 | Feature | Command | Engine | Status |
 |---|---|---|---|
-| PDF to images (PNG/JPG, chosen DPI, page range) | `to-images` | Poppler `pdftoppm` | done |
+| PDF to images (PNG/JPG, chosen DPI, page range) | `to-images` | Ghostscript (was Poppler) | done |
 | Images to PDF (JPEG embedded losslessly, A4/Letter/fit) | `images-to-pdf` | pure Rust | done |
-| PDF to text | `text` | Poppler `pdftotext` | done |
+| PDF to text | `text` | Ghostscript `txtwrite` (was Poppler) | done |
 | Password protect (AES-256) and unlock | `protect`, `unlock` | qpdf | done |
 | Strip metadata (Info dict + document XMP) | `strip-metadata` | qpdf JSON | done |
 | Inspect a PDF (pages, encryption, metadata) | `info` | qpdf | done |
@@ -40,15 +40,70 @@ real-world use.
 | Non-ASCII text in watermarks (font embedding) | n/a | n/a | todo |
 | Strip per-page metadata and annotation authors | n/a | n/a | todo |
 
-## Phase 3: Smart features
+## Phase 3: Smart features (done)
 
-| Feature | Engine | Status |
-|---|---|---|
-| OCR: scanned PDF to searchable PDF | Tesseract | todo |
-| Repair corrupted PDFs | qpdf / MuPDF | todo |
-| Linearize (fast web view) | qpdf | todo |
-| PDF/A conversion | Ghostscript | todo |
-| Predictable JPEG quality control in compress | Ghostscript | todo |
+| Feature | Command | Engine | Status |
+|---|---|---|---|
+| OCR: scanned PDF to searchable PDF (parallel, skips pages that already have text) | `ocr` | Tesseract + qpdf overlay | done |
+| Explicit JPEG quality, monotonic target-size ladder | `compress --quality` | Ghostscript | done |
+| Check structure | `check` | qpdf | done |
+| Repair damaged PDFs (honest about lost data) | `repair` | qpdf, Ghostscript fallback | done |
+| Linearize (fast web view) | `linearize` | qpdf | done |
+| PDF/A-1, -2, -3 conversion (declared, not certified) | `pdfa` | Ghostscript | done |
+| OCR languages beyond English bundled / downloadable | n/a | n/a | todo |
+| OCR page deskew and rotation detection (needs `osd` data) | n/a | n/a | todo |
+| PDF/A validation (veraPDF) | n/a | n/a | todo |
+| Skip JPEG re-encoding for flat graphics / screenshots | n/a | n/a | todo |
+
+## Phase 3.7: Agent-mode CLI (done)
+
+| Item | Status |
+|---|---|
+| Global `--json`: one JSON object per command, `{ok, command, result\|error, warnings, exit_code}` | done |
+| Never prompts: `--password-file` or `$PDFSQUEEZE_PASSWORD`, else `password_required` immediately | done |
+| Stable exit codes (0/1/2/3) and error codes, classified centrally | done |
+| `tools --json`: schemas generated from the CLI definitions | done |
+| `mcp`: MCP server over stdio reusing the same commands, with a folder allow-list | done, tested with a scripted client |
+| AGENTS.md: contract, client setup, recipes | done |
+| Tested against a real MCP client (Claude Desktop / Claude Code) | todo |
+| MCP progress notifications for long jobs (OCR) | todo |
+| Packaging for `npx` / `pip` installs | todo |
+
+## Phase 3.9: Windows and Linux (written, not yet run)
+
+Neither platform can be run from the Mac this was developed on, so everything marked
+"unverified" below only gets tested by its first CI run.
+
+| Item | Status |
+|---|---|
+| Engine lookup is OS-aware: `.exe` names, `gswin64c.exe`, Windows install dirs, per-OS install hints | done, unit-tested on every platform via an `Os` parameter |
+| Ghostscript resources found in Homebrew, Debian/MSYS2 (versioned) and Windows-installer layouts | done, unit-tested |
+| `\\?\` path prefix stripped (Ghostscript cannot read it); `qpdf.exe` exit-code 3 handling | done |
+| `GS_LIB` built with `join_paths` (`;` on Windows); static CRT for MSVC builds | done |
+| `scripts/smoke.sh`: 47 end-to-end checks, runs on any OS, can require bundled engines | done, passes on macOS |
+| `ci.yml`: tests on Linux/macOS/Windows, 32-bit Windows tests, end-to-end with apt engines | written, unverified |
+| `bundle-engines-linux.sh` (ldd + patchelf, glibc floor), `package-linux.sh` | written, unverified |
+| `bundle-engines-windows.sh` (MSYS2 mingw64), `package-windows.sh`, `install.ps1` | written, unverified |
+| `release.yml`: macOS arm64/Intel, Linux x86_64/arm64, Windows x64, Windows x86 | written, unverified |
+| Linux packages tested inside a bare `ubuntu:22.04` container | in release.yml, unverified |
+| musl / Alpine Linux | not supported (needs a static or musl build) |
+| Windows 32-bit OCR | not possible with current Tesseract builds |
+| Windows ARM64 | not planned yet |
+| Authenticode signing via SignPath Foundation (free for open source; needs public repo) | todo |
+
+## Phase 3.8: Three engines only (done)
+
+Poppler is no longer used. Ghostscript renders pages and extracts text, qpdf reads page
+geometry, Tesseract does OCR. This is what makes a 32-bit Windows build possible (Poppler has
+no current 32-bit Windows build) and shrinks the bundle.
+
+| Item | Status |
+|---|---|
+| `to-images` via Ghostscript (`png16m`/`jpeg`, source page numbers preserved in file names) | done |
+| `text` via Ghostscript `txtwrite`, per page, dedented; invisible OCR text is extracted | done |
+| Page sizes via qpdf JSON with MediaBox/CropBox/Rotate inheritance (watermark, page numbers) | done |
+| Bundle: 3 tools + 23 libraries (was 5 + 35), 25 MB download (was 28 MB) | done |
+| Compare text quality against real-world documents (multi-column, CJK, RTL) | todo |
 
 ## Phase 3.5: Distribution without Homebrew  (built, partly verified)
 
@@ -64,7 +119,6 @@ real-world use.
 | macOS older than the CI runner (e.g. 11-13) | not supported; needs building every dependency from source |
 | First tagged release + making the repo public so `install.sh` works | todo |
 | Homebrew tap (`brew install`) for users who have brew | todo |
-| Poppler-data (CJK text encodings) bundled | todo |
 | Windows and Linux packages | todo |
 
 ## Phase 4: Desktop app
@@ -99,14 +153,25 @@ real-world use.
   always valid and under the target when reachable, but not always the highest quality
   that fits. Phase 3 adds explicit JPEG quality control.
 - Engines are bundled in release packages (see Phase 3.5). Building from source still needs
-  Homebrew's Ghostscript, qpdf and Poppler on the build machine.
+  Homebrew's Ghostscript, qpdf and Tesseract on the build machine.
 - Bundle size is about 60 MB installed (26 MB download); it includes Tesseract libraries that
   Ghostscript links against.
-- CJK and other special text encodings in PDFs may not render or extract, because Poppler's
-  data package is not bundled yet.
+- Text extraction uses Ghostscript's `txtwrite`. It preserves columns and tables on the test
+  documents but has not been compared against real-world PDFs; reading order for complex
+  multi-column layouts may differ from dedicated tools.
 - Compress, merge, split and the page commands do not accept encrypted input yet; run
   `unlock` first.
 - Watermark and page-number text is limited to printable ASCII (standard Helvetica).
+- `compress` now forces JPEG for colour and grey images so quality is predictable. Flat
+  graphics, screenshots and diagrams can pick up JPEG artefacts at low quality settings; the
+  original is kept whenever the result would not be smaller.
+- OCR: only English is bundled (others need `--tessdata`). There is no deskew or automatic
+  rotation, so skewed or sideways scans recognise poorly. OCR adds a text layer but does not
+  clean up the image.
+- `pdfa` output declares the PDF/A part and conformance B and embeds fonts and an sRGB output
+  intent, but has not been run through a validator such as veraPDF.
+- `repair` cannot bring back data that is missing from the file (for example an interrupted
+  download); it reports that instead of claiming success.
 - `strip-metadata` removes the document Info dictionary and document-level XMP stream. It does
   not touch per-page metadata, annotation authors, or embedded files.
 - Images with EXIF rotation are placed as stored (orientation tag is ignored), and CMYK JPEGs

@@ -5,39 +5,56 @@ entirely on your own machine. Nothing is uploaded anywhere.
 
 > Working name. Early stage: CLI first, desktop app later. See [ROADMAP.md](ROADMAP.md).
 
-## Install (macOS, no Homebrew or anything else needed)
+## For AI agents
+
+pdfsqueeze can be called by agents either as an MCP server or as a CLI with `--json`:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/shivamhire025/pdfsqueeze/main/install.sh | sh
+pdfsqueeze mcp --allow-dir ~/Documents          # MCP server over stdio
+pdfsqueeze --json compress report.pdf           # one JSON object, never prompts
+pdfsqueeze tools --json                         # every command with a JSON Schema
 ```
 
-This downloads one package that already contains everything (Ghostscript, qpdf and Poppler
-are bundled), installs it under `~/.local/share/pdfsqueeze` and links `~/.local/bin/pdfsqueeze`.
-It needs no password and writes nothing outside your home folder. Works on Apple Silicon and
-Intel Macs. Check it with `pdfsqueeze doctor`.
+Stable exit codes (0 ok, 1 failure, 2 usage, 3 completed with problems) and error codes.
+See [AGENTS.md](AGENTS.md) for the full contract, MCP client configuration and recipes.
 
-> Releases are not published yet, so the command above will not work until the first tagged
+## Install (nothing else needs to be installed)
+
+| Platform | Command | Status |
+|---|---|---|
+| macOS, Apple Silicon | `curl -fsSL https://raw.githubusercontent.com/shivamhire025/pdfsqueeze/main/install.sh \| sh` | built and tested |
+| macOS, Intel | same command | built by CI, never run |
+| Linux x86_64 / arm64 | same command | scripts written, never run |
+| Windows 64-bit | `irm https://raw.githubusercontent.com/shivamhire025/pdfsqueeze/main/install.ps1 \| iex` | scripts written, never run |
+| Windows 32-bit | same command | experimental; no OCR (Tesseract has no 32-bit build) |
+
+Each package already contains everything (Ghostscript, qpdf and Tesseract are bundled). The
+installers need no password or administrator rights: they install under your home folder
+(`~/.local/share/pdfsqueeze`, or `%LOCALAPPDATA%\pdfsqueeze` on Windows) and add the command to
+your PATH. Check with `pdfsqueeze doctor`.
+
+> Releases are not published yet, so the commands above will not work until the first tagged
 > release exists (the repo is private for now). See "Releases" below.
 
-### "Unidentified developer" warnings
+### Security warnings
 
-pdfsqueeze is not signed with a paid Apple Developer certificate (it is free, open-source
-software). You normally will not see a warning: macOS only blocks files that carry a download
-quarantine flag, and `curl` does not set one. If you download the `.tar.gz` in a browser instead,
-macOS may refuse to run it; clear the flag once:
+pdfsqueeze is not signed with a paid certificate (it is free, open-source software).
 
-```bash
-xattr -dr com.apple.quarantine ~/Downloads/pdfsqueeze
-```
-
-The binaries are ad-hoc signed (free), which is all Apple Silicon requires to run them.
+- **macOS**: you normally will not see a warning: Gatekeeper only blocks files that carry a
+  download-quarantine flag, and `curl` does not set one. If you download the archive in a
+  browser, clear the flag once: `xattr -dr com.apple.quarantine ~/Downloads/pdfsqueeze`.
+- **Windows**: `install.ps1` clears the "downloaded from the internet" mark. If you download the
+  zip in a browser instead, Windows SmartScreen may say "Windows protected your PC": choose
+  **More info, then Run anyway**, or right-click the zip, Properties, tick **Unblock** before
+  extracting. Free code signing for open-source projects (SignPath Foundation) is planned.
+- **Linux**: no warnings.
 
 ## Build from source
 
-Requires Rust and, on the build machine only, Homebrew engines:
+Requires Rust and, on the build machine only, the three engines (Ghostscript, qpdf, Tesseract):
 
 ```bash
-brew install rust ghostscript qpdf poppler
+brew install rust ghostscript qpdf tesseract
 cargo build --release
 ./target/release/pdfsqueeze doctor     # uses the Homebrew engines it finds
 ```
@@ -48,13 +65,19 @@ To produce the self-contained package yourself:
 ./scripts/package-macos.sh             # -> dist/pdfsqueeze-macos-<arch>.tar.gz
 ```
 
-## Releases and macOS versions
+## Releases and OS versions
 
-A package built on your own Mac only runs on that macOS version or newer, because Homebrew
-compiles its libraries for the OS it runs on (a package built on macOS 27 needs macOS 27+).
+A package only runs on the OS version it was built on, or newer: Homebrew compiles its
+libraries for the macOS it runs on, and Linux packages need at least the build machine's glibc.
 Official releases are built by GitHub Actions on older runners (`.github/workflows/release.yml`,
-written but not yet run) to support older Macs. Each package records its floor in
-`engines/MIN_MACOS`, and `install.sh` refuses cleanly on a Mac that is too old.
+written but never run) to support older systems. Each package records its floor
+(`engines/MIN_MACOS` or `MIN_GLIBC`) and the installer refuses cleanly on a machine that is too
+old. Every release job smoke-tests its own package (`scripts/smoke.sh`, 47 checks) with the
+system's engines out of reach before it is published.
+
+Build a package on your own machine with `scripts/package-macos.sh`,
+`scripts/package-linux.sh`, or (in an MSYS2 MINGW64 shell, after `cargo build --release`)
+`scripts/package-windows.sh`.
 
 ## Usage
 
@@ -62,7 +85,7 @@ written but not yet run) to support older Macs. Each package records its floor i
 # compress
 pdfsqueeze compress report.pdf                       # recommended preset
 pdfsqueeze compress report.pdf --level extreme
-pdfsqueeze compress report.pdf --dpi 110
+pdfsqueeze compress report.pdf --dpi 110 --quality 60   # explicit image resolution and JPEG quality
 pdfsqueeze compress report.pdf --target-size 2MB     # highest quality that fits
 
 # batch: several files and/or folders in one go
@@ -89,6 +112,14 @@ pdfsqueeze protect report.pdf          # asks for a password (hidden)
 pdfsqueeze unlock report-protected.pdf
 pdfsqueeze strip-metadata report.pdf
 pdfsqueeze info report.pdf
+
+# scans, repair and archiving
+pdfsqueeze ocr scan.pdf                              # searchable PDF (English bundled)
+pdfsqueeze ocr scan.pdf --lang deu --tessdata ~/tessdata
+pdfsqueeze check report.pdf
+pdfsqueeze repair broken.pdf
+pdfsqueeze linearize report.pdf                      # fast web view
+pdfsqueeze pdfa report.pdf --part 2                  # archival; not certified
 
 # stamping
 pdfsqueeze watermark report.pdf "CONFIDENTIAL" --opacity 0.2

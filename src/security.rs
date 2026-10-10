@@ -150,29 +150,69 @@ pub fn strip_metadata(input: &Path, output: &Path) -> Result<StripReport> {
     Ok(report)
 }
 
-/// Human-readable summary of a PDF.
-pub fn info(input: &Path) -> Result<String> {
-    let mut out = String::new();
+#[derive(Debug, Default)]
+pub struct InfoReport {
+    pub file: String,
+    pub size_bytes: u64,
+    pub encrypted: bool,
+    /// None when the file is locked.
+    pub pages: Option<u32>,
+    /// Whether document-level XMP metadata is present (None when locked).
+    pub xmp: Option<bool>,
+    /// Document Info dictionary entries, keys without the leading slash.
+    pub info: std::collections::BTreeMap<String, String>,
+}
+
+impl InfoReport {
+    pub fn to_human(&self) -> String {
+        let mut out = format!(
+            "File:       {}\nSize:       {}\nEncrypted:  {}\n",
+            self.file,
+            human(self.size_bytes),
+            if self.encrypted { "yes" } else { "no" }
+        );
+        match self.pages {
+            Some(n) => out.push_str(&format!("Pages:      {n}\n")),
+            None => {
+                out.push_str("Pages:      (locked: run `unlock` first)\n");
+                return out;
+            }
+        }
+        match self.xmp {
+            Some(true) => out.push_str("XMP:        present\n"),
+            Some(false) => out.push_str("XMP:        none\n"),
+            None => {}
+        }
+        if self.info.is_empty() {
+            out.push_str("Info:       none\n");
+        } else {
+            out.push_str("Info:\n");
+            for (k, v) in &self.info {
+                out.push_str(&format!("  {k:<14} {v}\n"));
+            }
+        }
+        out
+    }
+}
+
+/// Summary of a PDF: page count, encryption and metadata.
+pub fn info(input: &Path) -> Result<InfoReport> {
     let size = std::fs::metadata(input)
         .with_context(|| format!("cannot read {}", input.display()))?
         .len();
-    out.push_str(&format!("File:       {}\nSize:       {}\n", input.display(), human(size)));
+    let mut rep = InfoReport {
+        file: input.display().to_string(),
+        size_bytes: size,
+        ..Default::default()
+    };
 
     let qpdf = engine::qpdf()?;
-    let encrypted = engine::exit_code(&qpdf, &["--is-encrypted".into(), input.into()])? == 0;
-    out.push_str(&format!(
-        "Encrypted:  {}\n",
-        if encrypted { "yes" } else { "no" }
-    ));
+    rep.encrypted = engine::exit_code(&qpdf, &["--is-encrypted".into(), input.into()])? == 0;
 
     // Page count and metadata need the password for encrypted files.
-    let pages = engine::run(&qpdf, &["--show-npages".into(), input.into()]);
-    match pages {
-        Ok(p) => out.push_str(&format!("Pages:      {}\n", p.trim())),
-        Err(_) if encrypted => {
-            out.push_str("Pages:      (locked: run `unlock` first)\n");
-            return Ok(out);
-        }
+    match engine::run(&qpdf, &["--show-npages".into(), input.into()]) {
+        Ok(p) => rep.pages = p.trim().parse().ok(),
+        Err(_) if rep.encrypted => return Ok(rep),
         Err(e) => return Err(e),
     }
 
@@ -182,32 +222,25 @@ pub fn info(input: &Path) -> Result<String> {
     if let Some(rn) = ref_num(root_ref) {
         let r = fetch(input, &[rn])?;
         if let Ok(root) = dict_of(&r, &format!("obj:{root_ref}")) {
-            out.push_str(&format!(
-                "XMP:        {}\n",
-                if root.contains_key("/Metadata") {
-                    "present"
-                } else {
-                    "none"
-                }
-            ));
+            rep.xmp = Some(root.contains_key("/Metadata"));
         }
     }
 
-    match trailer.get("/Info").and_then(Value::as_str) {
-        Some(info_ref) => {
-            let n = ref_num(info_ref).unwrap_or("0");
-            let o = fetch(input, &[n])?;
-            let d = dict_of(&o, &format!("obj:{info_ref}"))?;
-            out.push_str("Info:\n");
-            for (k, v) in &d {
-                let val = match v.as_str() {
-                    Some(s) => s.strip_prefix("u:").or_else(|| s.strip_prefix("b:")).unwrap_or(s).to_string(),
-                    None => v.to_string(),
-                };
-                out.push_str(&format!("  {:<14} {}\n", k.trim_start_matches('/'), val));
-            }
+    if let Some(info_ref) = trailer.get("/Info").and_then(Value::as_str) {
+        let n = ref_num(info_ref).unwrap_or("0");
+        let o = fetch(input, &[n])?;
+        let d = dict_of(&o, &format!("obj:{info_ref}"))?;
+        for (k, v) in &d {
+            let val = match v.as_str() {
+                Some(s) => s
+                    .strip_prefix("u:")
+                    .or_else(|| s.strip_prefix("b:"))
+                    .unwrap_or(s)
+                    .to_string(),
+                None => v.to_string(),
+            };
+            rep.info.insert(k.trim_start_matches('/').to_string(), val);
         }
-        None => out.push_str("Info:       none\n"),
     }
-    Ok(out)
+    Ok(rep)
 }

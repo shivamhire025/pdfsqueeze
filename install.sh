@@ -1,10 +1,11 @@
 #!/bin/sh
-# pdfsqueeze installer for macOS. No Homebrew or other software required.
+# pdfsqueeze installer for macOS and Linux. Nothing else needs to be installed.
 #
 #   curl -fsSL https://raw.githubusercontent.com/shivamhire025/pdfsqueeze/main/install.sh | sh
 #
 # Installs to ~/.local/share/pdfsqueeze and links ~/.local/bin/pdfsqueeze.
 # Nothing is written outside your home folder and no password is needed.
+# (Windows: use install.ps1.)
 #
 # Environment (all optional):
 #   PDFSQUEEZE_TARBALL  install from this local .tar.gz instead of downloading
@@ -18,12 +19,22 @@ BIN="${PDFSQUEEZE_BIN:-$HOME/.local/bin}"
 
 fail() { echo "error: $*" >&2; exit 1; }
 
-[ "$(uname -s)" = "Darwin" ] || fail "this installer is for macOS only"
+case "$(uname -s)" in
+  Darwin) PLATFORM=macos ;;
+  Linux)  PLATFORM=linux ;;
+  *) fail "this installer is for macOS and Linux. On Windows use install.ps1" ;;
+esac
 
 case "$(uname -m)" in
-  arm64|x86_64) ARCH="$(uname -m)" ;;
+  arm64|aarch64) ARCH=arm64 ;;
+  x86_64|amd64)  ARCH=x86_64 ;;
   *) fail "unsupported processor: $(uname -m)" ;;
 esac
+
+# The Linux package is built against glibc; Alpine and other musl systems differ.
+if [ "$PLATFORM" = linux ] && (ldd --version 2>&1 | grep -qi musl); then
+  fail "this build needs glibc; musl-based systems such as Alpine are not supported yet"
+fi
 
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
@@ -31,21 +42,28 @@ trap 'rm -rf "$TMP"' EXIT
 if [ -n "${PDFSQUEEZE_TARBALL:-}" ]; then
   cp "$PDFSQUEEZE_TARBALL" "$TMP/pkg.tar.gz"
 else
-  URL="https://github.com/$REPO/releases/latest/download/pdfsqueeze-macos-$ARCH.tar.gz"
+  URL="https://github.com/$REPO/releases/latest/download/pdfsqueeze-$PLATFORM-$ARCH.tar.gz"
   echo "Downloading $URL"
   curl -fSL --progress-bar "$URL" -o "$TMP/pkg.tar.gz" \
-    || fail "download failed. Is there a release for $ARCH yet?"
+    || fail "download failed. Is there a release for $PLATFORM/$ARCH yet?"
 fi
 
 tar -xzf "$TMP/pkg.tar.gz" -C "$TMP"
 [ -x "$TMP/pdfsqueeze/pdfsqueeze" ] || fail "package looks wrong (no pdfsqueeze inside)"
 
-# Refuse cleanly on a Mac that is too old for the bundled engines.
-if [ -f "$TMP/pdfsqueeze/engines/MIN_MACOS" ]; then
+# Refuse cleanly on a machine that is too old for the bundled engines.
+if [ -f "$TMP/pdfsqueeze/engines/MIN_MACOS" ] && [ "$PLATFORM" = macos ]; then
   need="$(cat "$TMP/pdfsqueeze/engines/MIN_MACOS")"
   have="$(sw_vers -productVersion | cut -d. -f1)"
   if [ "$have" -lt "$need" ]; then
     fail "this build needs macOS $need or newer; you have $(sw_vers -productVersion)"
+  fi
+fi
+if [ -f "$TMP/pdfsqueeze/engines/MIN_GLIBC" ] && [ "$PLATFORM" = linux ]; then
+  need="$(cat "$TMP/pdfsqueeze/engines/MIN_GLIBC")"
+  have="$(getconf GNU_LIBC_VERSION 2>/dev/null | awk '{print $2}')"
+  if [ -n "$have" ] && [ "$(printf '%s\n%s\n' "$need" "$have" | sort -V | head -1)" != "$need" ]; then
+    fail "this build needs glibc $need or newer; you have $have"
   fi
 fi
 
@@ -55,15 +73,17 @@ mv "$TMP/pdfsqueeze" "$DEST"
 ln -sf "$DEST/pdfsqueeze" "$BIN/pdfsqueeze"
 
 # Files fetched with curl are not quarantined, but be safe if a browser was used.
-xattr -dr com.apple.quarantine "$DEST" 2>/dev/null || true
+if [ "$PLATFORM" = macos ]; then
+  xattr -dr com.apple.quarantine "$DEST" 2>/dev/null || true
+fi
 
 echo "Installed: $BIN/pdfsqueeze"
 case ":$PATH:" in
   *":$BIN:"*) ;;
   *) echo
-     echo "Add this to your shell profile (~/.zshrc) so the command is found:"
+     echo "Add this to your shell profile (~/.zshrc or ~/.bashrc) so the command is found:"
      echo "  export PATH=\"$BIN:\$PATH\"" ;;
 esac
 echo
 "$BIN/pdfsqueeze" --version
-"$BIN/pdfsqueeze" doctor | grep -v tesseract
+"$BIN/pdfsqueeze" doctor

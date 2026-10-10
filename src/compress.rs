@@ -1,7 +1,10 @@
 //! PDF compression via Ghostscript's pdfwrite device.
 //!
-//! Most of a PDF's weight is embedded images, so "compress" mostly means
-//! downsampling and re-encoding them at a chosen DPI.
+//! Most of a PDF's weight is embedded images, so "compress" means
+//! downsampling them to a chosen DPI and re-encoding as JPEG at a chosen
+//! quality. Both knobs are explicit, which keeps results predictable: lower
+//! DPI or lower quality always means a smaller file. (Letting Ghostscript pick
+//! lossless-vs-JPEG per image made sizes jump around.)
 
 use crate::engine;
 use crate::util::ensure_distinct;
@@ -12,28 +15,34 @@ use std::path::{Path, PathBuf};
 
 #[derive(Clone, Copy, Debug)]
 pub enum Level {
-    /// Light compression, best quality (200 dpi images).
+    /// Light compression, best quality.
     Low,
-    /// Good balance for email and sharing (150 dpi).
+    /// Good balance for email and sharing.
     Recommended,
-    /// Smallest files, screen quality (72 dpi).
+    /// Smallest files, screen quality.
     Extreme,
 }
 
 impl Level {
-    pub fn dpi(self) -> u32 {
+    pub fn settings(self) -> Settings {
         match self {
-            Level::Low => 200,
-            Level::Recommended => 150,
-            Level::Extreme => 72,
+            Level::Low => Settings { dpi: 200, quality: 85 },
+            Level::Recommended => Settings { dpi: 150, quality: 72 },
+            Level::Extreme => Settings { dpi: 72, quality: 50 },
         }
     }
 }
 
+/// Image resolution cap (dots per inch) and JPEG quality (1-100).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Settings {
+    pub dpi: u32,
+    pub quality: u8,
+}
+
 #[derive(Clone, Copy, Debug)]
 pub enum Goal {
-    Level(Level),
-    Dpi(u32),
+    Settings(Settings),
     /// Find the highest quality that fits under this many bytes.
     TargetBytes(u64),
 }
@@ -42,15 +51,36 @@ pub enum Goal {
 pub struct Outcome {
     pub before: u64,
     pub after: u64,
-    pub dpi: Option<u32>,
+    pub settings: Settings,
     /// Compression would have made the file bigger, so the original was kept.
     pub kept_original: bool,
     /// Only meaningful for `Goal::TargetBytes`.
     pub target_met: bool,
 }
 
-/// Highest quality first; the first rung that fits the target wins.
-const TARGET_LADDER: &[u32] = &[300, 225, 150, 120, 96, 72, 60, 48];
+/// Best quality first; every step is no larger than the one before it, so the
+/// first rung that fits the target is the highest quality that does.
+const TARGET_LADDER: &[Settings] = &[
+    Settings { dpi: 300, quality: 90 },
+    Settings { dpi: 250, quality: 85 },
+    Settings { dpi: 200, quality: 80 },
+    Settings { dpi: 150, quality: 75 },
+    Settings { dpi: 150, quality: 65 },
+    Settings { dpi: 120, quality: 60 },
+    Settings { dpi: 100, quality: 55 },
+    Settings { dpi: 72, quality: 50 },
+    Settings { dpi: 72, quality: 40 },
+    Settings { dpi: 60, quality: 35 },
+    Settings { dpi: 48, quality: 30 },
+];
+
+/// Map JPEG quality (1-100, as in most image editors) to Ghostscript's
+/// QFactor, which is libjpeg's quality scaling divided by 100.
+pub fn qfactor(quality: u8) -> f64 {
+    let q = quality.clamp(1, 100) as f64;
+    let scale = if q < 50.0 { 5000.0 / q } else { 200.0 - 2.0 * q };
+    (scale / 100.0).max(0.01)
+}
 
 pub fn compress(input: &Path, output: &Path, goal: Goal) -> Result<Outcome> {
     ensure_distinct(input, output)?;
@@ -59,9 +89,12 @@ pub fn compress(input: &Path, output: &Path, goal: Goal) -> Result<Outcome> {
         .with_context(|| format!("cannot read {}", input.display()))?
         .len();
 
-    let (best_tmp, dpi, target_met) = match goal {
-        Goal::Level(l) => single(&gs, input, l.dpi())?,
-        Goal::Dpi(d) => single(&gs, input, d)?,
+    let (best_tmp, settings, target_met) = match goal {
+        Goal::Settings(s) => {
+            let tmp = tmp_path(s);
+            run_gs(&gs, input, &tmp, s)?;
+            (tmp, s, true)
+        }
         Goal::TargetBytes(target) => ladder(&gs, input, target)?,
     };
 
@@ -77,46 +110,45 @@ pub fn compress(input: &Path, output: &Path, goal: Goal) -> Result<Outcome> {
     Ok(Outcome {
         before,
         after: if kept_original { before } else { after },
-        dpi: Some(dpi),
+        settings,
         kept_original,
         target_met,
     })
 }
 
-fn single(gs: &Path, input: &Path, dpi: u32) -> Result<(PathBuf, u32, bool)> {
-    let tmp = tmp_path(dpi);
-    run_gs(gs, input, &tmp, dpi)?;
-    Ok((tmp, dpi, true))
-}
-
-fn ladder(gs: &Path, input: &Path, target: u64) -> Result<(PathBuf, u32, bool)> {
-    let mut last: Option<(PathBuf, u32)> = None;
-    for &dpi in TARGET_LADDER {
-        let tmp = tmp_path(dpi);
-        run_gs(gs, input, &tmp, dpi)?;
+fn ladder(gs: &Path, input: &Path, target: u64) -> Result<(PathBuf, Settings, bool)> {
+    let mut last: Option<(PathBuf, Settings)> = None;
+    for &s in TARGET_LADDER {
+        let tmp = tmp_path(s);
+        run_gs(gs, input, &tmp, s)?;
         let size = fs::metadata(&tmp)?.len();
         if let Some((prev, _)) = last.take() {
             let _ = fs::remove_file(prev);
         }
         if size <= target {
-            return Ok((tmp, dpi, true));
+            return Ok((tmp, s, true));
         }
-        last = Some((tmp, dpi));
+        last = Some((tmp, s));
     }
     match last {
-        Some((tmp, dpi)) => Ok((tmp, dpi, false)),
+        Some((tmp, s)) => Ok((tmp, s, false)),
         None => bail!("no compression attempt ran"),
     }
 }
 
-fn tmp_path(dpi: u32) -> PathBuf {
-    std::env::temp_dir().join(format!("pdfsqueeze-{}-{dpi}.pdf", std::process::id()))
+fn tmp_path(s: Settings) -> PathBuf {
+    std::env::temp_dir().join(format!(
+        "pdfsqueeze-{}-{}-{}.pdf",
+        std::process::id(),
+        s.dpi,
+        s.quality
+    ))
 }
 
-fn run_gs(gs: &Path, input: &Path, output: &Path, dpi: u32) -> Result<()> {
-    let preset = if dpi >= 225 {
+fn run_gs(gs: &Path, input: &Path, output: &Path, s: Settings) -> Result<()> {
+    let preset = if s.dpi >= 225 {
         "/printer"
-    } else if dpi >= 110 {
+    } else if s.dpi >= 110 {
         "/ebook"
     } else {
         "/screen"
@@ -133,9 +165,13 @@ fn run_gs(gs: &Path, input: &Path, output: &Path, dpi: u32) -> Result<()> {
         "-dCompressFonts=true".into(),
         "-dSubsetFonts=true".into(),
     ];
+    for kind in ["Color", "Gray"] {
+        args.push(format!("-dAutoFilter{kind}Images=false").into());
+        args.push(format!("-d{kind}ImageFilter=/DCTEncode").into());
+    }
     for kind in ["Color", "Gray", "Mono"] {
         args.push(format!("-dDownsample{kind}Images=true").into());
-        args.push(format!("-d{kind}ImageResolution={dpi}").into());
+        args.push(format!("-d{kind}ImageResolution={}", s.dpi).into());
         args.push(format!("-d{kind}ImageDownsampleThreshold=1.0").into());
         args.push(format!("-d{kind}ImageDownsampleType=/Bicubic").into());
     }
@@ -143,8 +179,49 @@ fn run_gs(gs: &Path, input: &Path, output: &Path, dpi: u32) -> Result<()> {
     let mut out_arg = OsString::from("-sOutputFile=");
     out_arg.push(output);
     args.push(out_arg);
+
+    // JPEG quality can only be set through distiller params. Chroma
+    // subsampling (4:2:0) is used below quality 80 for extra savings.
+    let q = qfactor(s.quality);
+    let (h, v) = if s.quality < 80 {
+        ("[2 1 1 2]", "[2 1 1 2]")
+    } else {
+        ("[1 1 1 1]", "[1 1 1 1]")
+    };
+    args.push("-c".into());
+    args.push(
+        format!(
+            "<< /ColorImageDict << /QFactor {q:.3} /Blend 1 /HSamples {h} /VSamples {v} >> \
+             /GrayImageDict << /QFactor {q:.3} /Blend 1 /HSamples [1 1 1 1] /VSamples [1 1 1 1] >> >> \
+             setdistillerparams"
+        )
+        .into(),
+    );
+    args.push("-f".into());
     args.push(input.into());
 
     engine::run(gs, &args)?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn qfactor_matches_libjpeg_scaling() {
+        assert!((qfactor(75) - 0.5).abs() < 1e-9);
+        assert!((qfactor(90) - 0.2).abs() < 1e-9);
+        assert!((qfactor(50) - 1.0).abs() < 1e-9);
+        assert!((qfactor(25) - 2.0).abs() < 1e-9);
+        assert!(qfactor(100) > 0.0);
+    }
+
+    #[test]
+    fn ladder_never_gets_better() {
+        for w in TARGET_LADDER.windows(2) {
+            assert!(w[1].dpi <= w[0].dpi, "dpi must not increase");
+            assert!(w[1].quality <= w[0].quality, "quality must not increase");
+        }
+    }
 }

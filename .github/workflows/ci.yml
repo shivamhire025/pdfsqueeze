@@ -1,0 +1,42 @@
+# Runs on every push and pull request: builds and tests on all three operating
+# systems, plus 32-bit Windows, plus a full end-to-end run with real engines.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unit tests
+        run: cargo test
+      - name: Release build
+        run: cargo build --release
+
+  windows-32bit:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup target add i686-pc-windows-msvc
+      - name: Unit tests (32-bit)
+        run: cargo test --target i686-pc-windows-msvc
+
+  end-to-end-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install engines
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ghostscript qpdf tesseract-ocr tesseract-ocr-eng
+      - run: cargo build --release
+      - name: Smoke test every command
+        run: ./scripts/smoke.sh target/release/pdfsqueeze

@@ -8,13 +8,104 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
 
-/// Searched after $PATH, so the tool also works when launched from a GUI
-/// (Finder-launched apps get a minimal PATH).
-const EXTRA_DIRS: &[&str] = &["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin"];
+/// Operating systems we ship for. Passed explicitly to the pure helpers below
+/// so Windows and Linux behaviour can be unit-tested from any machine.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Os {
+    Mac,
+    Linux,
+    Windows,
+}
 
-/// Folder holding the bundled engines (`bin/`, `lib/`, `share/`), if any.
+pub fn host_os() -> Os {
+    if cfg!(target_os = "windows") {
+        Os::Windows
+    } else if cfg!(target_os = "macos") {
+        Os::Mac
+    } else {
+        Os::Linux
+    }
+}
+
+/// File names to try for an engine. Windows executables carry `.exe`, and
+/// Ghostscript's console build is `gswin64c.exe` / `gswin32c.exe` there.
+pub fn exe_names(tool: &str, os: Os) -> Vec<String> {
+    match (os, tool) {
+        (Os::Windows, "gs") => ["gswin64c.exe", "gswin32c.exe", "gs.exe"]
+            .iter()
+            .map(|s| s.to_string())
+            .collect(),
+        (Os::Windows, t) => vec![format!("{t}.exe")],
+        (_, t) => vec![t.to_string()],
+    }
+}
+
+/// How to get an engine on this OS, shown when one is missing.
+pub fn install_hint(tool: &str, pkg: &str, os: Os) -> String {
+    match os {
+        Os::Mac => format!("brew install {pkg}"),
+        Os::Linux => {
+            let apt = if tool == "tesseract" { "tesseract-ocr" } else { pkg };
+            format!("sudo apt install {apt} (or your distribution's package manager)")
+        }
+        Os::Windows => format!(
+            "the pdfsqueeze installer (it bundles {tool}), or install {pkg} and add it to PATH"
+        ),
+    }
+}
+
+/// Where engines usually live outside $PATH. Needed because apps started from
+/// a GUI often get a minimal PATH.
+fn extra_dirs(os: Os) -> Vec<PathBuf> {
+    match os {
+        Os::Mac => ["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin"]
+            .iter()
+            .map(PathBuf::from)
+            .collect(),
+        Os::Linux => ["/usr/local/bin", "/usr/bin", "/snap/bin"]
+            .iter()
+            .map(PathBuf::from)
+            .collect(),
+        Os::Windows => {
+            let mut v = Vec::new();
+            for var in ["ProgramFiles", "ProgramFiles(x86)", "ProgramW6432"] {
+                let Some(base) = std::env::var_os(var).map(PathBuf::from) else {
+                    continue;
+                };
+                // Ghostscript: <Program Files>\gs\gs10.xx\bin, qpdf: ...\qpdf*\bin
+                for parent in ["gs", ""] {
+                    let dir = if parent.is_empty() { base.clone() } else { base.join(parent) };
+                    if let Ok(rd) = std::fs::read_dir(&dir) {
+                        for e in rd.flatten() {
+                            let name = e.file_name().to_string_lossy().to_lowercase();
+                            if name.starts_with("gs") || name.starts_with("qpdf") {
+                                v.push(e.path().join("bin"));
+                            }
+                        }
+                    }
+                }
+                v.push(base.join("Tesseract-OCR"));
+            }
+            v
+        }
+    }
+}
+
+/// Strip the `\\?\` prefix Windows adds when canonicalising. Ghostscript and
+/// other C programs do not understand it.
+pub fn plain_path(p: PathBuf) -> PathBuf {
+    let s = p.to_string_lossy();
+    if let Some(rest) = s.strip_prefix(r"\\?\") {
+        if !rest.starts_with("UNC") {
+            return PathBuf::from(rest);
+        }
+    }
+    p
+}
+
+/// Folder holding the bundled engines (`bin/`, `share/`), if any.
 /// Checked in order: `$PDFSQUEEZE_ENGINES`, then `engines/` next to the
-/// executable (release tarball layout), then `../engines/`.
+/// executable (release package layout), then `../engines/`.
 pub fn bundle_dir() -> Option<PathBuf> {
     let mut candidates: Vec<PathBuf> = Vec::new();
     if let Some(p) = std::env::var_os("PDFSQUEEZE_ENGINES") {
@@ -30,39 +121,78 @@ pub fn bundle_dir() -> Option<PathBuf> {
         .into_iter()
         .find(|c| c.join("bin").is_dir())
         .and_then(|c| c.canonicalize().ok())
+        .map(plain_path)
+}
+
+fn find_in(dir: &Path, tool: &str, os: Os) -> Option<PathBuf> {
+    exe_names(tool, os)
+        .into_iter()
+        .map(|n| dir.join(n))
+        .find(|p| p.is_file())
 }
 
 /// Bundled engines win over anything on the system, so behaviour does not
 /// depend on whatever versions a machine happens to have installed.
 pub fn find(tool: &str) -> Option<PathBuf> {
+    let os = host_os();
     if let Some(b) = bundle_dir() {
-        let p = b.join("bin").join(tool);
-        if p.is_file() {
+        if let Some(p) = find_in(&b.join("bin"), tool, os) {
             return Some(p);
         }
     }
     let mut dirs: Vec<PathBuf> = std::env::var_os("PATH")
         .map(|p| std::env::split_paths(&p).collect())
         .unwrap_or_default();
-    dirs.extend(EXTRA_DIRS.iter().map(PathBuf::from));
-    dirs.into_iter().map(|d| d.join(tool)).find(|c| c.is_file())
+    dirs.extend(extra_dirs(os));
+    dirs.iter().find_map(|d| find_in(d, tool, os))
 }
 
 pub fn is_bundled(tool: &Path) -> bool {
     bundle_dir().is_some_and(|b| tool.starts_with(b.join("bin")))
 }
 
+/// The folder inside a Ghostscript install/bundle that holds `Resource/Init`,
+/// `lib/` and `iccprofiles/`. Distributions differ: Homebrew puts them
+/// directly under `share/ghostscript`, Debian, Arch and MSYS2 add a version
+/// folder, and the Windows installer uses `<install>\Resource`.
+pub fn ghostscript_root(base: &Path) -> Option<PathBuf> {
+    let has_init = |d: &Path| d.join("Resource").join("Init").is_dir();
+    let share = base.join("share").join("ghostscript");
+    if has_init(&share) {
+        return Some(share);
+    }
+    if let Ok(rd) = std::fs::read_dir(&share) {
+        let mut subs: Vec<PathBuf> = rd.flatten().map(|e| e.path()).filter(|p| has_init(p)).collect();
+        subs.sort();
+        if let Some(last) = subs.pop() {
+            return Some(last); // newest version folder
+        }
+    }
+    if has_init(base) {
+        return Some(base.to_path_buf());
+    }
+    None
+}
+
 /// A command for `tool`. Bundled engines are pointed at their own resources
-/// so they never look for (or depend on) a Homebrew install.
+/// so they never look for (or depend on) a system install.
 fn command(tool: &Path) -> Command {
     let mut c = Command::new(tool);
     if let Some(b) = bundle_dir().filter(|b| tool.starts_with(b.join("bin"))) {
-        let gs = b.join("share").join("ghostscript");
-        let paths: Vec<String> = ["Resource/Init", "lib", "Resource/Font", "fonts"]
-            .iter()
-            .map(|d| gs.join(d).to_string_lossy().into_owned())
-            .collect();
-        c.env("GS_LIB", paths.join(":"));
+        if let Some(gs) = ghostscript_root(&b) {
+            let dirs: Vec<PathBuf> = ["Resource/Init", "lib", "Resource/Font", "fonts"]
+                .iter()
+                .map(|d| gs.join(d))
+                .collect();
+            // join_paths uses ':' or ';' as the platform requires
+            if let Ok(joined) = std::env::join_paths(dirs) {
+                c.env("GS_LIB", joined);
+            }
+        }
+        let td = b.join("share").join("tessdata");
+        if td.is_dir() {
+            c.env("TESSDATA_PREFIX", td);
+        }
         let fc = b.join("etc").join("fonts.conf");
         if fc.is_file() {
             c.env("FONTCONFIG_FILE", fc);
@@ -71,9 +201,12 @@ fn command(tool: &Path) -> Command {
     c
 }
 
-pub fn require(tool: &str, brew_pkg: &str) -> Result<PathBuf> {
+pub fn require(tool: &str, pkg: &str) -> Result<PathBuf> {
     find(tool).with_context(|| {
-        format!("`{tool}` not found. Install it with: brew install {brew_pkg}")
+        format!(
+            "`{tool}` not found. Install it with: {}",
+            install_hint(tool, pkg, host_os())
+        )
     })
 }
 
@@ -83,7 +216,7 @@ pub fn qpdf() -> Result<PathBuf> {
 
 /// qpdf exits 3 for "succeeded with warnings", which we treat as success.
 fn finish(tool: &Path, out: Output) -> Result<String> {
-    let is_qpdf = tool.file_name().is_some_and(|n| n == "qpdf");
+    let is_qpdf = tool.file_stem().is_some_and(|n| n == "qpdf");
     let ok = out.status.success() || (is_qpdf && out.status.code() == Some(3));
     if !ok {
         bail!(
@@ -100,6 +233,40 @@ fn finish(tool: &Path, out: Output) -> Result<String> {
 pub fn run(tool: &Path, args: &[OsString]) -> Result<String> {
     let out = command(tool)
         .args(args)
+        .output()
+        .with_context(|| format!("failed to start {}", tool.display()))?;
+    finish(tool, out)
+}
+
+/// Everything a finished process produced; non-zero exit is not an error here.
+pub struct Captured {
+    pub code: i32,
+    pub stdout: String,
+    pub stderr: String,
+}
+
+/// Run `tool`, returning its exit code and both output streams. Only failing
+/// to start the process is an error.
+pub fn run_capture(tool: &Path, args: &[OsString]) -> Result<Captured> {
+    let out = command(tool)
+        .args(args)
+        .output()
+        .with_context(|| format!("failed to start {}", tool.display()))?;
+    Ok(Captured {
+        code: out.status.code().unwrap_or(-1),
+        stdout: String::from_utf8_lossy(&out.stdout).into_owned(),
+        stderr: String::from_utf8_lossy(&out.stderr).into_owned(),
+    })
+}
+
+/// Like `run`, with extra environment variables for the child.
+pub fn run_env(tool: &Path, args: &[OsString], env: &[(&str, OsString)]) -> Result<String> {
+    let mut c = command(tool);
+    c.args(args);
+    for (k, v) in env {
+        c.env(k, v);
+    }
+    let out = c
         .output()
         .with_context(|| format!("failed to start {}", tool.display()))?;
     finish(tool, out)
@@ -138,14 +305,88 @@ pub fn exit_code(tool: &Path, args: &[OsString]) -> Result<i32> {
 
 /// Used by the `doctor` command: (tool, brew package, what needs it).
 pub const TOOLS: &[(&str, &str, &str)] = &[
-    ("gs", "ghostscript", "compress"),
+    (
+        "gs",
+        "ghostscript",
+        "compress, to-images, text, ocr, pdfa, repair (fallback)",
+    ),
     (
         "qpdf",
         "qpdf",
-        "merge, split, pages, rotate, protect, unlock, strip-metadata, info, watermark, number-pages",
+        "merge, split, pages, rotate, protect, unlock, strip-metadata, info, watermark, number-pages, repair, check, linearize, ocr",
     ),
-    ("pdftoppm", "poppler", "to-images"),
-    ("pdfinfo", "poppler", "watermark, number-pages"),
-    ("pdftotext", "poppler", "text"),
-    ("tesseract", "tesseract", "OCR (planned)"),
+    ("tesseract", "tesseract", "ocr"),
 ];
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn windows_names_get_exe_and_ghostscript_variants() {
+        assert_eq!(exe_names("qpdf", Os::Windows), vec!["qpdf.exe"]);
+        assert_eq!(
+            exe_names("gs", Os::Windows),
+            vec!["gswin64c.exe", "gswin32c.exe", "gs.exe"]
+        );
+        assert_eq!(exe_names("gs", Os::Mac), vec!["gs"]);
+        assert_eq!(exe_names("tesseract", Os::Linux), vec!["tesseract"]);
+    }
+
+    #[test]
+    fn install_hints_are_per_platform() {
+        assert_eq!(install_hint("gs", "ghostscript", Os::Mac), "brew install ghostscript");
+        assert!(install_hint("tesseract", "tesseract", Os::Linux).contains("tesseract-ocr"));
+        assert!(install_hint("qpdf", "qpdf", Os::Windows).contains("installer"));
+    }
+
+    #[test]
+    fn missing_engine_message_keeps_the_classifiable_prefix() {
+        // commands::classify relies on this exact phrase
+        let msg = format!(
+            "`gs` not found. Install it with: {}",
+            install_hint("gs", "ghostscript", Os::Windows)
+        );
+        assert!(msg.to_lowercase().contains("not found. install it with"));
+    }
+
+    #[test]
+    fn strips_windows_verbatim_prefix() {
+        assert_eq!(
+            plain_path(PathBuf::from(r"\\?\C:\Apps\pdfsqueeze")),
+            PathBuf::from(r"C:\Apps\pdfsqueeze")
+        );
+        // UNC shares keep their prefix
+        let unc = PathBuf::from(r"\\?\UNC\server\share");
+        assert_eq!(plain_path(unc.clone()), unc);
+        assert_eq!(plain_path(PathBuf::from("/usr/bin")), PathBuf::from("/usr/bin"));
+    }
+
+    #[test]
+    fn finds_ghostscript_resources_in_every_layout() {
+        let root = std::env::temp_dir().join(format!("pdfsqueeze-gsroot-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        let mk = |p: &str| std::fs::create_dir_all(root.join(p)).unwrap();
+
+        // Homebrew: share/ghostscript/Resource/Init
+        mk("brew/share/ghostscript/Resource/Init");
+        assert_eq!(
+            ghostscript_root(&root.join("brew")),
+            Some(root.join("brew/share/ghostscript"))
+        );
+        // Debian / MSYS2: share/ghostscript/<version>/Resource/Init (newest wins)
+        mk("deb/share/ghostscript/10.02.1/Resource/Init");
+        mk("deb/share/ghostscript/10.05.0/Resource/Init");
+        assert_eq!(
+            ghostscript_root(&root.join("deb")),
+            Some(root.join("deb/share/ghostscript/10.05.0"))
+        );
+        // Windows installer: <base>/Resource/Init
+        mk("win/Resource/Init");
+        assert_eq!(ghostscript_root(&root.join("win")), Some(root.join("win")));
+        // nothing there
+        mk("empty");
+        assert_eq!(ghostscript_root(&root.join("empty")), None);
+        let _ = std::fs::remove_dir_all(root);
+    }
+}

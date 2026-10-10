@@ -1,5 +1,5 @@
 #!/bin/bash
-# Assemble a self-contained engines/ folder (Ghostscript, qpdf, Poppler tools
+# Assemble a self-contained engines/ folder (Ghostscript, qpdf, Tesseract tools
 # plus every non-system library they need) from a Homebrew install.
 #
 # Homebrew is needed on the BUILD machine only. The result runs on a Mac with
@@ -10,12 +10,12 @@ set -euo pipefail
 
 OUT="${1:?usage: scripts/bundle-engines.sh <output-dir>}"
 OUT="$(mkdir -p "$OUT" && cd "$OUT" && pwd)"
-TOOLS="gs qpdf pdftoppm pdftotext pdfinfo"
+TOOLS="gs qpdf tesseract"
 
 command -v brew >/dev/null || { echo "error: Homebrew is required on the build machine" >&2; exit 1; }
 PREFIX="$(brew --prefix)"
 for t in $TOOLS; do
-  [ -x "$PREFIX/bin/$t" ] || { echo "error: $t not found; run: brew install ghostscript qpdf poppler" >&2; exit 1; }
+  [ -x "$PREFIX/bin/$t" ] || { echo "error: $t not found; run: brew install ghostscript qpdf tesseract" >&2; exit 1; }
 done
 
 rm -rf "$OUT"; mkdir -p "$OUT/bin" "$OUT/lib" "$OUT/licenses" "$OUT/etc"
@@ -109,6 +109,19 @@ GSROOT="$(dirname "$(dirname "$(real "$PREFIX/bin/gs")")")"
 mkdir -p "$OUT/share"
 cp -RL "$GSROOT/share/ghostscript" "$OUT/share/ghostscript"
 if [ -d "$GSROOT/share/fonts" ]; then cp -RL "$GSROOT/share/fonts" "$OUT/share/fonts"; fi
+
+# 3b. Tesseract language data: English only (about 4 MB). Other languages are
+#     used via `pdfsqueeze ocr --tessdata <folder>`.
+TD="$PREFIX/share/tessdata"
+if [ -f "$TD/eng.traineddata" ]; then
+  mkdir -p "$OUT/share/tessdata"
+  cp "$TD/eng.traineddata" "$OUT/share/tessdata/"
+  for f in pdf.ttf configs tessconfigs; do
+    [ -e "$TD/$f" ] && cp -RL "$TD/$f" "$OUT/share/tessdata/" || true
+  done
+else
+  echo "warning: no tessdata found; OCR will not work in this bundle" >&2
+fi
 
 # 4. a minimal fontconfig setup that uses the system's fonts
 cat > "$OUT/etc/fonts.conf" <<'XML'

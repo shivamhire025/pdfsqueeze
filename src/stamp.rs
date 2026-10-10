@@ -8,8 +8,7 @@ use crate::engine;
 use crate::pages::page_count;
 use crate::pdfout::{ensure_ascii, escape, text_width, PdfBuilder};
 use crate::util::ensure_distinct;
-use anyhow::{bail, Context, Result};
-use std::collections::BTreeMap;
+use anyhow::{bail, Result};
 use std::ffi::OsString;
 use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
@@ -24,57 +23,15 @@ pub enum Position {
     TopRight,
 }
 
-/// Parse `pdfinfo -f 1 -l N` output into displayed (width, height) per page.
-/// pdfinfo reports the unrotated size plus a rotation, so swap for 90/270.
-pub fn parse_pdfinfo(text: &str) -> BTreeMap<u32, (f64, f64)> {
-    let mut size: BTreeMap<u32, (f64, f64)> = BTreeMap::new();
-    let mut rot: BTreeMap<u32, u32> = BTreeMap::new();
-    for line in text.lines() {
-        let t: Vec<&str> = line.split_whitespace().collect();
-        if t.len() < 4 || t[0] != "Page" {
-            continue;
-        }
-        let Ok(n) = t[1].parse::<u32>() else { continue };
-        match t[2] {
-            "size:" if t.len() >= 6 => {
-                if let (Ok(w), Ok(h)) = (t[3].parse::<f64>(), t[5].parse::<f64>()) {
-                    size.insert(n, (w, h));
-                }
-            }
-            "rot:" => {
-                if let Ok(r) = t[3].parse::<u32>() {
-                    rot.insert(n, r % 360);
-                }
-            }
-            _ => {}
-        }
-    }
-    for (n, (w, h)) in size.iter_mut() {
-        if matches!(rot.get(n), Some(90) | Some(270)) {
-            std::mem::swap(w, h);
-        }
-    }
-    size
-}
-
 fn page_sizes(input: &Path, total: u32) -> Result<Vec<(f64, f64)>> {
-    let tool = engine::require("pdfinfo", "poppler")?;
-    let args: Vec<OsString> = vec![
-        "-f".into(),
-        "1".into(),
-        "-l".into(),
-        total.to_string().into(),
-        input.into(),
-    ];
-    let out = engine::run(&tool, &args)?;
-    let map = parse_pdfinfo(&out);
-    (1..=total)
-        .map(|n| {
-            map.get(&n)
-                .copied()
-                .with_context(|| format!("could not read size of page {n}"))
-        })
-        .collect()
+    let sizes = crate::pages::page_sizes(input)?;
+    if sizes.len() != total as usize {
+        bail!(
+            "could not read the size of every page (found {} of {total})",
+            sizes.len()
+        );
+    }
+    Ok(sizes)
 }
 
 /// Build the overlay: `content(index, w, h)` returns the content stream for
@@ -220,26 +177,4 @@ pub fn number_pages(
     })?;
     apply_overlay(input, &overlay, output)?;
     Ok(total)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn parses_pdfinfo_and_swaps_rotated() {
-        let text = "\
-Title:           x
-Page    1 size: 612 x 792 pts (letter)
-Page    1 rot:  0
-Page    2 size: 612 x 792 pts (letter)
-Page    2 rot:  90
-Page    3 size: 595.276 x 841.89 pts (A4)
-Page    3 rot:  270
-";
-        let m = parse_pdfinfo(text);
-        assert_eq!(m[&1], (612.0, 792.0));
-        assert_eq!(m[&2], (792.0, 612.0));
-        assert!((m[&3].0 - 841.89).abs() < 1e-6);
-    }
 }
