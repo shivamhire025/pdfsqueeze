@@ -9,6 +9,7 @@
 use crate::convert;
 use crate::engine;
 use crate::pages::page_count;
+use crate::progress;
 use crate::util::ensure_distinct;
 use anyhow::{bail, Context, Result};
 use std::ffi::OsString;
@@ -120,6 +121,8 @@ pub fn ocr(
     check_languages(&tesseract, opts)?;
 
     let total = page_count(input)?;
+    // Whole job: 0-10% checking which pages have text, 10-95% recognising, rest assembling.
+    progress::window(0.0, 0.10, "Checking pages · ");
     let has_text: Vec<bool> = if opts.force {
         vec![false; total as usize]
     } else {
@@ -143,6 +146,8 @@ pub fn ocr(
     let cleanup = Cleanup(dir.clone());
 
     // Recognise pages in parallel.
+    progress::window(0.10, 0.85, "");
+    progress::set(Some(0.0), &format!("Recognising page 0 of {}", todo.len()));
     let jobs = opts.jobs.clamp(1, todo.len());
     let next = AtomicUsize::new(0);
     let done = AtomicUsize::new(0);
@@ -155,6 +160,10 @@ pub fn ocr(
                 let r = ocr_page(&tesseract, input, &dir, n, opts);
                 let d = done.fetch_add(1, Ordering::SeqCst) + 1;
                 progress(d as u32, todo.len() as u32);
+                progress::set(
+                    Some(d as f64 / todo.len() as f64),
+                    &format!("Recognising page {d} of {}", todo.len()),
+                );
                 results.lock().unwrap().push((n, r));
             });
         }
@@ -166,6 +175,8 @@ pub fn ocr(
         layers.push(r?);
     }
 
+    progress::window(0.95, 0.05, "");
+    progress::set(Some(0.0), "Adding the text layer");
     // One overlay PDF whose page k holds the text layer of todo[k].
     let overlay = dir.join("overlay.pdf");
     let mut lines: Vec<String> = vec!["--empty".into(), "--pages".into()];

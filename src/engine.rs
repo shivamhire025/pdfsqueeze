@@ -282,6 +282,48 @@ pub fn run(tool: &Path, args: &[OsString]) -> Result<String> {
     finish(tool, out)
 }
 
+/// Like `run`, but hands every line the tool prints on stdout to `on_line`
+/// while it is still working (Ghostscript announces each page this way).
+/// stderr is drained on its own thread so a chatty tool cannot stall.
+pub fn run_lines(tool: &Path, args: &[OsString], mut on_line: impl FnMut(&str)) -> Result<String> {
+    use std::io::{BufRead, BufReader, Read};
+    let mut child = command(tool)
+        .args(args)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .with_context(|| format!("failed to start {}", tool.display()))?;
+    let mut err_pipe = child.stderr.take().context("could not read stderr")?;
+    let err_thread = std::thread::spawn(move || {
+        let mut buf = Vec::new();
+        let _ = err_pipe.read_to_end(&mut buf);
+        buf
+    });
+    let mut stdout = Vec::new();
+    if let Some(out) = child.stdout.take() {
+        let mut reader = BufReader::new(out);
+        let mut line = Vec::new();
+        loop {
+            line.clear();
+            match reader.read_until(b'\n', &mut line) {
+                Ok(0) | Err(_) => break,
+                Ok(_) => {
+                    on_line(String::from_utf8_lossy(&line).trim_end());
+                    stdout.extend_from_slice(&line);
+                }
+            }
+        }
+    }
+    let status = child.wait()?;
+    let stderr = err_thread.join().unwrap_or_default();
+    finish(tool, Output { status, stdout, stderr })
+}
+
+/// The page number in a Ghostscript progress line ("Page 7"), if it is one.
+pub fn gs_page_line(line: &str) -> Option<u32> {
+    line.strip_prefix("Page ")?.trim().parse().ok()
+}
+
 /// Everything a finished process produced; non-zero exit is not an error here.
 pub struct Captured {
     pub code: i32,

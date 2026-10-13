@@ -10,6 +10,7 @@ mod imgpdf;
 mod ocr;
 mod pages;
 mod pdfout;
+mod progress;
 mod security;
 mod stamp;
 mod ui;

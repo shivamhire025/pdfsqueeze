@@ -7,6 +7,8 @@
 //! lossless-vs-JPEG per image made sizes jump around.)
 
 use crate::engine;
+use crate::pages::page_count;
+use crate::progress;
 use crate::util::ensure_distinct;
 use anyhow::{bail, Context, Result};
 use std::ffi::OsString;
@@ -92,7 +94,7 @@ pub fn compress(input: &Path, output: &Path, goal: Goal) -> Result<Outcome> {
     let (best_tmp, settings, target_met) = match goal {
         Goal::Settings(s) => {
             let tmp = tmp_path(s);
-            run_gs(&gs, input, &tmp, s)?;
+            run_gs(&gs, input, &tmp, s, &Step { base: 0.0, span: 1.0, label: "Compressing".into() })?;
             (tmp, s, true)
         }
         Goal::TargetBytes(target) => ladder(&gs, input, target)?,
@@ -118,9 +120,15 @@ pub fn compress(input: &Path, output: &Path, goal: Goal) -> Result<Outcome> {
 
 fn ladder(gs: &Path, input: &Path, target: u64) -> Result<(PathBuf, Settings, bool)> {
     let mut last: Option<(PathBuf, Settings)> = None;
-    for &s in TARGET_LADDER {
+    let attempts = TARGET_LADDER.len();
+    for (k, &s) in TARGET_LADDER.iter().enumerate() {
         let tmp = tmp_path(s);
-        run_gs(gs, input, &tmp, s)?;
+        let step = Step {
+            base: k as f64 / attempts as f64,
+            span: 1.0 / attempts as f64,
+            label: format!("Attempt {} of up to {attempts}", k + 1),
+        };
+        run_gs(gs, input, &tmp, s, &step)?;
         let size = fs::metadata(&tmp)?.len();
         if let Some((prev, _)) = last.take() {
             let _ = fs::remove_file(prev);
@@ -145,7 +153,14 @@ fn tmp_path(s: Settings) -> PathBuf {
     ))
 }
 
-fn run_gs(gs: &Path, input: &Path, output: &Path, s: Settings) -> Result<()> {
+/// Where one Ghostscript pass sits inside the whole job, for progress reports.
+struct Step {
+    base: f64,
+    span: f64,
+    label: String,
+}
+
+fn run_gs(gs: &Path, input: &Path, output: &Path, s: Settings, step: &Step) -> Result<()> {
     let preset = if s.dpi >= 225 {
         "/printer"
     } else if s.dpi >= 110 {
@@ -160,7 +175,6 @@ fn run_gs(gs: &Path, input: &Path, output: &Path, s: Settings) -> Result<()> {
         format!("-dPDFSETTINGS={preset}").into(),
         "-dNOPAUSE".into(),
         "-dBATCH".into(),
-        "-dQUIET".into(),
         "-dDetectDuplicateImages=true".into(),
         "-dCompressFonts=true".into(),
         "-dSubsetFonts=true".into(),
@@ -200,7 +214,18 @@ fn run_gs(gs: &Path, input: &Path, output: &Path, s: Settings) -> Result<()> {
     args.push("-f".into());
     args.push(input.into());
 
-    engine::run(gs, &args)?;
+    // Ghostscript prints "Page N" as it finishes each page; that is the progress.
+    let pages = page_count(input).unwrap_or(0);
+    progress::set(Some(step.base), &format!("{} · starting", step.label));
+    engine::run_lines(gs, &args, |line| {
+        if let Some(n) = engine::gs_page_line(line) {
+            if pages > 0 {
+                let f = step.base + step.span * (n.min(pages) as f64 / pages as f64);
+                progress::set(Some(f), &format!("{} · page {} of {pages}", step.label, n.min(pages)));
+            }
+        }
+    })?;
+    progress::set(Some(step.base + step.span), &step.label);
     Ok(())
 }
 

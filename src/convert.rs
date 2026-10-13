@@ -2,6 +2,7 @@
 //! needs only three engines (Ghostscript, qpdf, Tesseract) on every platform.
 
 use crate::engine;
+use crate::progress;
 use crate::pages::page_count;
 use anyhow::{bail, Context, Result};
 use std::ffi::OsString;
@@ -112,7 +113,6 @@ pub fn to_images(
     let ext = format.ext();
 
     let mut args: Vec<OsString> = vec![
-        "-q".into(),
         "-dNOPAUSE".into(),
         "-dBATCH".into(),
         format!("-sDEVICE={}", format.device()).into(),
@@ -127,7 +127,14 @@ pub fn to_images(
     }
     args.push(out_arg(&scratch.0.join(format!("p-%d.{ext}"))));
     args.push(input.into());
-    engine::run(&gs, &args)?;
+    let wanted = (l - f + 1) as f64;
+    progress::set(Some(0.0), "Rendering pages");
+    engine::run_lines(&gs, &args, |line| {
+        if let Some(n) = engine::gs_page_line(line) {
+            let done = (n.saturating_sub(f) + 1).min(l - f + 1);
+            progress::set(Some(done as f64 / wanted), &format!("Rendering page {done} of {}", l - f + 1));
+        }
+    })?;
 
     // Ghostscript numbers outputs from 1; name them by the source page number,
     // zero-padded to the document's page count (page-07 of 120 pages is page-007).
@@ -215,14 +222,21 @@ pub fn page_texts(input: &Path, total: u32) -> Result<Vec<String>> {
     let gs = engine::require("gs", "ghostscript")?;
     let scratch = Scratch::new("text")?;
     let args: Vec<OsString> = vec![
-        "-q".into(),
         "-dNOPAUSE".into(),
         "-dBATCH".into(),
         "-sDEVICE=txtwrite".into(),
         out_arg(&scratch.0.join("t-%d.txt")),
         input.into(),
     ];
-    engine::run(&gs, &args)?;
+    progress::set(Some(0.0), "Reading text");
+    engine::run_lines(&gs, &args, |line| {
+        if let Some(n) = engine::gs_page_line(line) {
+            if total > 0 {
+                let n = n.min(total);
+                progress::set(Some(n as f64 / total as f64), &format!("Reading page {n} of {total}"));
+            }
+        }
+    })?;
 
     let mut texts = vec![String::new(); total as usize];
     for (n, path) in numbered(&scratch.0, "t-", "txt")? {

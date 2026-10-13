@@ -437,6 +437,12 @@ fn handle(state: &State, mut req: Request) {
             }
         }
 
+        // What the running job reports (page counts, files done); the window polls this.
+        (Method::Get, "/api/progress") => {
+            let p = crate::progress::snapshot();
+            respond_json(req, 200, &json!({ "ok": true, "fraction": p.fraction, "label": p.label }));
+        }
+
         (Method::Post, "/api/remove") => {
             let mut body = String::new();
             let _ = req.as_reader().take(MAX_JSON).read_to_string(&mut body);
@@ -643,6 +649,7 @@ fn run_tool(state: &State, req: &Value) -> Value {
     // Drop empty strings so optional fields left blank behave as "not given".
     args.retain(|_, v| !matches!(v, Value::String(s) if s.trim().is_empty()) && !v.is_null());
 
+    crate::progress::reset();
     let (envelope, _is_err) = agent::call_tool(&state.specs, &state.policy, &tool, &args);
     if let Some(f) = pw_file {
         let _ = std::fs::remove_file(f);

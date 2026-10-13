@@ -754,6 +754,14 @@ fn compress_cmd(
         if let Some(parent) = job.output.parent() {
             std::fs::create_dir_all(parent)?;
         }
+        if batch_mode {
+            let name = job.input.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+            crate::progress::window(
+                i as f64 / total as f64,
+                1.0 / total as f64,
+                &format!("File {} of {total} ({name}) · ", i + 1),
+            );
+        }
         match compress::compress(&job.input, &job.output, goal) {
             Err(e) if !batch_mode => return Err(e),
             Err(e) => {
