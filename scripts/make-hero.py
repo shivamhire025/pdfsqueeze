@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generates assets/hero.jpg: a long archive corridor of paper-filled shelves in warm light.
+"""Generates assets/hero.jpg: a long archive corridor of paper-filled shelves in soft forest light.
 
 Original artwork made from code, so there is no licence to carry. To use a real
 photograph instead, replace assets/hero.jpg (2400x1350 works well; keep it under
@@ -19,9 +19,9 @@ BOT = 300.0                 # below the horizon (floor line) at z = 1
 
 def warm(v, k=1.0):
     v = max(0.0, min(1.0, v))
-    return (int((30 + 225 * v) * k), int((17 + 165 * v) * k), int((10 + 112 * v) * k))
+    return (int((16 + 196 * v) * k), int((24 + 206 * v) * k), int((15 + 170 * v) * k))
 
-img = Image.new("RGB", (W, H), (8, 6, 4))
+img = Image.new("RGB", (W, H), (4, 8, 5))
 d = ImageDraw.Draw(img)
 
 def lerp(a, b, t): return a + (b - a) * t
@@ -96,14 +96,14 @@ for _ in range(46):
     cx, cy = rng.uniform(0, W), rng.uniform(0, H * 0.8)
     r = rng.uniform(10, 42)
     m = np.exp(-(((xx - cx) ** 2 + (yy - cy) ** 2) / (2 * (r * 0.55) ** 2)))
-    out += m[:, :, None] * rng.uniform(4, 13) * np.array([1.0, 0.78, 0.55])[None, None, :]
+    out += m[:, :, None] * rng.uniform(4, 13) * np.array([0.92, 1.0, 0.80])[None, None, :]
 
 # darken the left third so headlines read, vignette, warm grade, grain
 left = np.clip(1.0 - 0.55 * np.clip((W * 0.55 - xx) / (W * 0.55), 0, 1), 0.4, 1.0)
 vx = (xx - W / 2) / (W / 2); vy = (yy - H / 2) / (H / 2)
 vig = np.clip(1.2 - 0.62 * (vx ** 2 + vy ** 2), 0.22, 1.0)
 out *= (left * vig)[:, :, None]
-out *= np.array([1.06, 0.96, 0.86])[None, None, :]
+out *= np.array([0.86, 1.0, 0.84])[None, None, :]
 out += rng.normal(0, 3.0, out.shape)
 Image.fromarray(np.clip(out, 0, 255).astype(np.uint8)).save(
     "assets/hero.jpg", quality=64, optimize=True, progressive=True, subsampling="4:2:0")
