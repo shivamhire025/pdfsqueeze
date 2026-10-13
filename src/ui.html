@@ -67,18 +67,20 @@
   .offline { margin: 0 4px; font-size: 12.5px; color: var(--good); display: flex; align-items: center; gap: 7px; font-weight: 600; }
   .offline::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
   .rail h2 { margin: 8px 4px 0; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--faint); font-weight: 700; }
-  .docs { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; overflow-y: auto; min-height: 0; flex: 1 1 auto; align-content: start; padding-bottom: 2px; }
+  .docs { list-style: none; margin: 0; padding: 0 0 2px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; overflow-x: hidden; overflow-y: auto; min-height: 0; flex: 1 1 auto; align-content: start; }
+  .docs > li { min-width: 0; }
   .doc { display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 8px; border: 1px solid var(--line); background: var(--surface);
          border-radius: 12px; cursor: pointer; text-align: left; width: 100%; }
   .doc:hover { border-color: var(--accent); }
   .doc:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-  .doc[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); background: var(--accent-soft); }
+  .doc[aria-pressed="true"] { border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); background: var(--accent-soft); }
+  .doc.active { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
   .thumb { width: 52px; height: 66px; border-radius: 6px; background: var(--bg); border: 1px solid var(--line); overflow: hidden; display: grid; place-items: center; color: var(--faint); }
   .thumb img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
   .doc .meta { min-width: 0; }
   .doc .n { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .doc .s { color: var(--muted); font-size: 12.5px; font-variant-numeric: tabular-nums; }
-  .x { border: 0; background: transparent; color: var(--faint); width: 26px; height: 26px; border-radius: 7px; cursor: pointer; display: grid; place-items: center; }
+  .x { flex: none; justify-self: end; align-self: center; border: 0; background: transparent; color: var(--faint); width: 26px; height: 26px; border-radius: 7px; cursor: pointer; display: grid; place-items: center; }
   .x:hover { background: var(--bad-soft); color: var(--bad); }
   .x:focus-visible { outline: 2px solid var(--accent); }
   .add { border: 1.5px dashed var(--line); background: transparent; border-radius: 12px; padding: 12px; cursor: pointer; color: var(--muted); font-weight: 600;
@@ -359,6 +361,13 @@ const PLACEHOLDER = { target_size: "for example 2MB or 500KB", pages: "for examp
 
 let tools = [], files = [], selected = new Set(), cat = "shrink", current = null, preset = "recommended";
 let result = null, running = false, saved = {};
+let active = null; // the document single-file tools work on: the one picked last in the list
+function activeId() {
+  const has = (id) => files.some((f) => f.id === id);
+  if (active && has(active) && (selected.has(active) || selected.size === 0)) return active;
+  const firstSel = files.find((f) => selected.has(f.id));
+  return (firstSel || files[0] || {}).id || null;
+}
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const ico = (n, cls = "i") => `<svg class="${cls}" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-${n}"/></svg>`;
@@ -387,7 +396,7 @@ function renderDocs() {
       ? `<img alt="" loading="lazy" src="/api/thumb?id=${encodeURIComponent(f.id)}&t=${encodeURIComponent(TOKEN)}">`
       : ico("doc");
     const detail = [f.pages ? plural(f.pages, "page") : null, human(f.size)].filter(Boolean).join(" · ");
-    li.innerHTML = `<div class="doc" role="button" tabindex="0" aria-pressed="${on}" data-id="${esc(f.id)}" title="${esc(f.name)}">
+    li.innerHTML = `<div class="doc${on && f.id === activeId() ? " active" : ""}" role="button" tabindex="0" aria-pressed="${on}" data-id="${esc(f.id)}" title="${esc(f.name)}">
         <div class="thumb">${thumb}</div>
         <div class="meta"><div class="n">${esc(f.name)}</div><div class="s">${esc(detail)}</div></div>
         <button class="x" type="button" aria-label="Remove ${esc(f.name)}" data-remove="${esc(f.id)}">${ico("close")}</button>
@@ -410,7 +419,13 @@ $("docs").addEventListener("click", async (e) => {
 $("docs").addEventListener("keydown", (e) => {
   if ((e.key === "Enter" || e.key === " ") && e.target.classList.contains("doc")) { e.preventDefault(); toggle(e.target.dataset.id); }
 });
-function toggle(id) { selected.has(id) ? selected.delete(id) : selected.add(id); renderDocs(); if (current) render(); }
+// A click makes a document the one the tools work on; clicking the document that is already
+// the working one takes it out of the selection (merge uses every selected document).
+function toggle(id) {
+  if (selected.has(id) && activeId() === id) selected.delete(id);
+  else { selected.add(id); active = id; }
+  renderDocs(); if (current) render();
+}
 
 async function refreshFiles() {
   const f = await api("/api/files");
@@ -424,7 +439,7 @@ async function upload(list) {
   for (const file of list) {
     try {
       const j = await api("/api/upload?name=" + encodeURIComponent(file.name), { method: "POST", body: file });
-      if (j.ok) { files.push(j.file); selected.add(j.file.id); renderDocs(); render(); }
+      if (j.ok) { files.push(j.file); selected.add(j.file.id); active = j.file.id; renderDocs(); render(); }
       else showFatal(j.error);
     } catch (e) { showFatal({ code: "error", message: String(e) }); }
   }
@@ -504,8 +519,9 @@ function renderTask(v) {
         chosen.length ? chosen.map((f) => `<span class="chip">${ico("doc", "i")} ${esc(f.name)}</span>`).join("") : '<span class="hint">Pick documents on the left.</span>'}</div>
         ${current.name === "merge" ? '<div class="hint">Joined in the order they appear on the left.</div>' : ""}</div>`;
     } else {
-      const opts = (chosen.length ? chosen : files).map((f) => `<option value="${esc(f.id)}">${esc(f.name)}</option>`).join("");
-      html += `<div class="field"><label for="f_file">Document</label><select id="f_file">${opts}</select></div>`;
+      // One document: the list on the left already says which. Only mention it when there is a choice.
+      const doc = files.find((f) => f.id === activeId());
+      if (doc && files.length > 1) html += `<div class="field"><div class="hint" style="margin:0">Working on <b>${esc(doc.name)}</b></div></div>`;
     }
   }
 
@@ -594,17 +610,12 @@ function openTool(name) {
 let pg = newPg(null);
 function newPg(id) { return { id, count: 0, order: [], status: "idle", nodes: new Map(), rot: new Map(), del: new Set(), sel: new Set(), anchor: null }; }
 const norm = (d) => ((d % 360) + 360) % 360;
-function pageDocId() {
-  const sel = document.getElementById("f_file");
-  return sel && sel.value ? sel.value : null;
-}
+function pageDocId() { return activeId(); }
 async function initPages() {
   const id = pageDocId();
   const area = document.getElementById("pagearea");
   if (!area) return;
   if (!id) { area.innerHTML = '<div class="hint">Add a PDF first.</div>'; return; }
-  const sel = document.getElementById("f_file");
-  if (sel && !sel.dataset.pgBound) { sel.dataset.pgBound = "1"; sel.addEventListener("change", initPages); }
   if (pg.id === id && pg.status === "ready") { drawPages(); return; }
   pg = newPg(id); pg.status = "loading";
   area.innerHTML = '<div class="pg-loading">Loading page previews…</div>';
@@ -841,7 +852,7 @@ async function run() {
   if (fk) {
     let ids;
     if (multi) ids = files.filter((f) => selected.has(f.id)).map((f) => f.id);
-    else { const sel = document.getElementById("f_file"); ids = sel && sel.value ? [sel.value] : []; }
+    else { const id = activeId(); ids = id ? [id] : []; }
     if (!ids.length) { result = { env: { ok: false, error: { code: "usage", message: "Add a document first, then try again." } } }; renderResult(); return; }
     fileMap[fk] = ids;
   }
