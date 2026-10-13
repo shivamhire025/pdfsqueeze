@@ -284,7 +284,7 @@
   html { background: var(--bg); }
   body { background: transparent; }
   body::before { content: ""; position: fixed; inset: 0; z-index: -1; background:
-      linear-gradient(90deg, rgba(246, 250, 244, .94) 0%, rgba(246, 250, 244, .78) 40%, rgba(246, 250, 244, .50) 100%),
+      linear-gradient(90deg, rgba(246, 250, 244, .94) 0%, rgba(240, 247, 240, .86) 40%, rgba(236, 245, 238, .76) 100%),
       var(--hero, none) center / cover no-repeat; }
   .app { margin: 14px; height: calc(100% - 28px); border: 1px solid rgba(60, 130, 70, .38); border-radius: 28px; overflow: hidden; background: rgba(255, 255, 255, .20); }
   .rail { background: var(--rail); -webkit-backdrop-filter: blur(22px) saturate(1.15); backdrop-filter: blur(22px) saturate(1.15); border-right: 1px solid var(--line); }
@@ -436,6 +436,19 @@
   .sg-stage #sg-page { width: 100%; height: auto; display: block; }
   .sg-stage #sg-sig { position: absolute; cursor: move; touch-action: none; outline: 1.5px dashed var(--accent-fg); outline-offset: 2px; }
   .sg-handle { position: absolute; width: 18px; height: 18px; border-radius: 4px; background: var(--accent-fg); border: 2px solid #fff; cursor: nwse-resize; touch-action: none; }
+
+  /* ---- opening splash: the photograph at full strength with a white logo ---- */
+  #splash { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; background:
+      radial-gradient(ellipse 34% 30% at 50% 50%, rgba(4, 12, 10, .62) 0%, rgba(4, 12, 10, .38) 55%, rgba(4, 12, 10, 0) 100%),
+      radial-gradient(ellipse at center, rgba(4, 12, 10, .06) 0%, rgba(4, 12, 10, .50) 100%),
+      var(--hero, #0c1a17) center / cover no-repeat, #0c1a17; transition: opacity .6s ease, visibility .6s; cursor: pointer; }
+  #splash.gone { opacity: 0; visibility: hidden; pointer-events: none; }
+  .splash-logo { display: grid; justify-items: center; gap: 14px; color: #fff; text-align: center; animation: splashIn .9s ease both; }
+  .splash-logo svg { width: 92px; height: 92px; filter: drop-shadow(0 4px 18px rgba(0, 0, 0, .35)); }
+  .splash-word { font-family: var(--display); font-weight: 300; font-size: 40px; letter-spacing: -.02em; text-shadow: 0 2px 18px rgba(0, 0, 0, .4); }
+  .splash-tag { font-size: 14.5px; letter-spacing: .04em; opacity: .92; font-weight: 500; text-shadow: 0 1px 10px rgba(0, 0, 0, .4); }
+  @keyframes splashIn { from { opacity: 0; transform: translateY(8px) scale(.98); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .splash-logo { animation: none; } #splash { transition: none; } }
 </style>
 </head>
 <body>
@@ -481,6 +494,18 @@
   </defs>
 </svg>
 
+<div id="splash" role="presentation">
+  <div class="splash-logo">
+    <svg viewBox="0 0 96 96" aria-hidden="true">
+      <circle cx="48" cy="48" r="44" fill="none" stroke="#fff" stroke-width="2.5"/>
+      <g fill="none" stroke="#fff" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M30 41h11V30M66 41H55V30M30 55h11v11M66 55H55v11"/>
+      </g>
+    </svg>
+    <div class="splash-word">pdfsqueeze</div>
+    <div class="splash-tag">Your PDFs, on your machine.</div>
+  </div>
+</div>
 <div class="app">
   <aside class="rail" aria-label="Your documents">
     <div class="brand"><span class="mark"><svg class="i" viewBox="0 0 24 24" style="width:18px;height:18px"><use href="#i-compress"/></svg></span><b>pdf<span>squeeze</span></b></div>
@@ -499,6 +524,16 @@
 "use strict";
 const TOKEN = new URLSearchParams(location.search).get("t") || "";
 const GRID_TOOL = "organize";
+(function splash() {
+  const el = document.getElementById("splash");
+  if (!el) return;
+  let done = false;
+  const hide = () => { if (done) return; done = true; el.classList.add("gone"); setTimeout(() => el.remove(), 700); };
+  const calm = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (!/[?&]splash=hold\b/.test(location.search)) setTimeout(hide, calm ? 600 : 1700);
+  el.addEventListener("pointerdown", hide);
+  window.addEventListener("keydown", hide, { once: true });
+})();
 document.documentElement.style.setProperty("--hero", `url("/hero.jpg?t=${encodeURIComponent(TOKEN)}")`);
 
 const CATS = [

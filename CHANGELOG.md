@@ -6,6 +6,10 @@ Plain-language record of what pdfsqueeze can do and how well that has been check
 ## Unreleased (work since the 2026-10-10 CI run; not yet on GitHub)
 
 ### Added
+- **Opening splash**: on launch the window shows a close-up leaf photograph at full strength with
+  a white logo and the tagline in the centre for a moment, then fades into the app (click or
+  press a key to skip). The same photograph, softened, is the background behind the app.
+  The photograph's licence has to be confirmed before publishing.
 - **Sign a PDF**: draw your signature, type it, or use an image (white background removed),
   then drag and resize it on a real preview of the page and apply it to one page or every page.
   Also a command: `pdfsqueeze sign contract.pdf --image signature.png --page z --x 60 --y 78 --width 25`.
