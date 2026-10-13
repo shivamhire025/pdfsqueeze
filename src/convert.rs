@@ -152,6 +152,27 @@ pub fn to_images(
     Ok(files)
 }
 
+/// Render one page in colour as a PNG (a larger preview than the thumbnails).
+pub fn render_page_color(input: &Path, page: u32, dpi: u32, out_png: &Path) -> Result<()> {
+    let gs = engine::require("gs", "ghostscript")?;
+    let args: Vec<OsString> = vec![
+        "-q".into(),
+        "-dNOPAUSE".into(),
+        "-dBATCH".into(),
+        "-sDEVICE=png16m".into(),
+        format!("-r{dpi}").into(),
+        "-dTextAlphaBits=4".into(),
+        "-dGraphicsAlphaBits=4".into(),
+        "-dUseCropBox".into(),
+        format!("-dFirstPage={page}").into(),
+        format!("-dLastPage={page}").into(),
+        out_arg(out_png),
+        input.into(),
+    ];
+    engine::run(&gs, &args)?;
+    Ok(())
+}
+
 /// Render one page as grayscale PNG (used for OCR).
 pub fn render_page_gray(input: &Path, page: u32, dpi: u32, out_png: &Path) -> Result<()> {
     let gs = engine::require("gs", "ghostscript")?;

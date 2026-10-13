@@ -427,6 +427,40 @@ fn handle(state: &State, mut req: Request) {
             respond_json(req, 200, &json!({ "ok": true, "count": count, "max": PAGE_GRID_MAX }));
         }
 
+        // One page rendered large enough to place a signature on.
+        (Method::Get, "/api/pagepreview") => {
+            let id = query_param(&query, "id").unwrap_or_default();
+            let page = query_param(&query, "page").and_then(|p| p.parse::<u32>().ok()).unwrap_or(0);
+            let path = state
+                .uploads
+                .lock()
+                .unwrap()
+                .iter()
+                .find(|u| u.id == id && u.kind == "pdf")
+                .map(|u| u.path.clone());
+            let Some(path) = path else {
+                return respond_error(req, 404, "input_not_found", "unknown PDF");
+            };
+            if page == 0 {
+                return respond_error(req, 404, "error", "no such page");
+            }
+            let dir = state.session.join("previews");
+            let _ = std::fs::create_dir_all(&dir);
+            let out = dir.join(format!("{id}-{page}.png"));
+            if !out.is_file() && crate::convert::render_page_color(&path, page, 100, &out).is_err() {
+                return respond_error(req, 404, "error", "no preview");
+            }
+            match std::fs::File::open(&out) {
+                Ok(f) => {
+                    let resp = Response::from_file(f)
+                        .with_header(header("Content-Type", "image/png"))
+                        .with_header(header("Cache-Control", "max-age=3600"));
+                    let _ = req.respond(resp);
+                }
+                Err(_) => respond_error(req, 404, "error", "no preview"),
+            }
+        }
+
         (Method::Get, "/api/pagethumb") => {
             let id = query_param(&query, "id").unwrap_or_default();
             let page = query_param(&query, "page").and_then(|p| p.parse::<u32>().ok()).unwrap_or(0);
@@ -599,7 +633,8 @@ fn run_tool(state: &State, req: &Value) -> Value {
             for id in &ids {
                 match find(id) {
                     Some(u) => {
-                        if first_name.is_none() {
+                        // Name the result after the document, not after a helper picture.
+                        if first_name.is_none() && (arg == "input" || arg == "inputs") {
                             first_name = Some(u.name.clone());
                         }
                         paths.push(u.path.to_string_lossy().into_owned());

@@ -17,7 +17,7 @@ real-world use.
 | Merge | `merge a.pdf b.pdf -o out.pdf` | qpdf | done |
 | Split every N / by ranges | `split --every / --ranges` | qpdf | done |
 | Extract / delete / reorder pages | `extract`, `delete`, `reorder` | qpdf | done |
-| Sign (place a signature picture on pages; visual, not a certificate signature) | `sign` | qpdf + overlay | done (command); window flow in progress |
+| Sign (place a signature picture on pages; visual, not a certificate signature) | `sign` | qpdf + overlay | done (command and window flow); digital certificate signing not built |
 | Organize pages (reorder + rotate + delete in one pass, page-grid window) | `organize` | qpdf | done; drag and buttons verified in a browser tab, not yet by hand in the window |
 | Rotate (all or selected pages) | `rotate` | qpdf | done |
 | Engine health check | `doctor` | n/a | done |

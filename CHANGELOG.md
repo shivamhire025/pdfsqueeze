@@ -6,11 +6,14 @@ Plain-language record of what pdfsqueeze can do and how well that has been check
 ## Unreleased (work since the 2026-10-10 CI run; not yet on GitHub)
 
 ### Added
-- **Sign a PDF (command)**: `pdfsqueeze sign contract.pdf --image signature.png --page z --x 60 --y 78 --width 25`
-  places a picture of a signature on one or more pages, keeping the image's transparency.
-  This is a visual signature, not a certificate-based digital signature. *Verified:* the
-  signature landed on the right pages with no white box, other pages untouched; 3 smoke
-  checks and 1 unit test. The window flow is next.
+- **Sign a PDF**: draw your signature, type it, or use an image (white background removed),
+  then drag and resize it on a real preview of the page and apply it to one page or every page.
+  Also a command: `pdfsqueeze sign contract.pdf --image signature.png --page z --x 60 --y 78 --width 25`.
+  This is a visual signature (a picture of your signature), not a certificate-based digital
+  signature. *Verified:* the signature lands within 0.2% of where it was placed, with no white
+  box, on normal and rotated pages (90, 180, 270), other pages untouched; 3 smoke checks and 1
+  unit test. Drawing and dragging were exercised in a browser tab with scripted pointer events,
+  not by hand in the real window.
 - **One white card for the work**: the tool tabs, the tool links and the work area now sit on a
   single white card instead of floating over the photograph.
 - **Better legibility**: secondary text and links were darkened to at least 4.5:1 contrast

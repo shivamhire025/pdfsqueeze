@@ -122,6 +122,7 @@ To test a package the way a user gets it (engines out of reach):
   `FreeConsole` so no terminal appears. App icon, `.app` bundle, Windows installer.
 - Progress bar is real for compress (pages, attempts), OCR (checking, pages, assembling), to-images, text and batch compress (files); other commands are quick and show an animated bar with no percentage. Source: `src/progress.rs`, polled via `/api/progress`.
 - Tools are grouped under five icons (organize/merge/split/extract; compress/repair/check/linearize/pdfa; images/text/ocr; protect/unlock/metadata/info; watermark/numbers) in one workspace, and `organize` replaces the separate delete/reorder/rotate screens (the CLI commands remain). Check in the real window.
+- Sign: visual signature only (draw, type or image, placed on a page preview). Certificate-based digital signatures (PKCS#7) are **not** built; they would need a signing library and a way to hold a key.
 - Native open and Save-As dialogs; reorder documents for merge (page reorder with real thumbnails and drag is done: verified in a browser with a synthetic mouse drag, **not** in the native window with a real hand); OCR progress in the window.
 - Verify native file drop and keyboard shortcuts on macOS and Windows with a person.
 - Test with real documents (scans, very large files, encrypted input, CJK).
