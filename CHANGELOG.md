@@ -6,6 +6,8 @@ Plain-language record of what pdfsqueeze can do and how well that has been check
 ## Unreleased (work since the 2026-10-10 CI run; not yet on GitHub)
 
 ### Added
+- **One white card for the work**: the tool tabs, the tool links and the work area now sit on a
+  single white card instead of floating over the photograph.
 - **Better legibility**: secondary text and links were darkened to at least 4.5:1 contrast
   against the lightest and darkest parts of the background (measured, not guessed), a soft
   frosted backing sits behind working screens, borders and selection states are firmer, and

@@ -379,6 +379,15 @@
   .preset, .tile { border-radius: 10px; }
   input[type=text], input[type=number], input[type=password], select { border-radius: 8px; }
   .grp span { white-space: nowrap; }
+  /* one white card holds the toolbar, the tool links and the work, so nothing sits on the photo */
+  .board { background: rgba(255, 255, 255, .94); border: 1px solid var(--line); border-radius: 14px; overflow: hidden; }
+  .board .toolbar { margin: 0; padding: 0 14px; border-bottom: 1px solid var(--line); }
+  .board .subs { margin: 0; padding: 8px 12px; border-bottom: 1px solid var(--line); background: rgba(24, 58, 36, .03); }
+  .board-body { padding: 16px 16px 18px; }
+  .board .sheet { background: transparent; border: 0; padding: 0; border-radius: 0; }
+  .board .pg-bar { background: rgba(24, 58, 36, .045); border: 0; }
+  .board .pg, .board .ucard { background: #fff; }
+  .board .banner { background: rgba(255, 255, 255, .9); }
   /* legibility: a frosted backing keeps the photograph soft behind working screens, text colours are
      darker (secondary text 5:1 or better) and disabled states are still readable */
   main { background: rgba(255, 255, 255, .50); -webkit-backdrop-filter: blur(12px) saturate(1.08); backdrop-filter: blur(12px) saturate(1.08); }
@@ -668,8 +677,8 @@ function renderTask(v) {
   const fk = fileArgKey();
   const multi = fk && props[fk].type === "array";
   const chosen = files.filter((f) => selected.has(f.id));
-  let html = `${toolbarHtml()}
-    <div class="result top" id="result" aria-live="polite"></div>
+  let html = `<div class="board">${toolbarHtml()}
+    <div class="board-body"><div class="result top" id="result" aria-live="polite"></div>
     <div class="sheet"><form id="form" autocomplete="off" onsubmit="return false">`;
 
   if (fk) {
@@ -736,7 +745,7 @@ function renderTask(v) {
   if (extra.length) html += `<details class="more"><summary>More options</summary><div class="inner">${extra.map((k) => fieldHtml(k, props[k], false)).join("")}</div></details>`;
 
   html += `<div class="runrow"><button class="btn primary" id="run" type="button" ${running ? "disabled" : ""}>${running ? "Working…" : esc(TITLE[current.name] || "Run")}</button>
-      ${running ? '<div class="progwrap"><span class="progress" id="pbar" role="progressbar" aria-label="Progress" aria-valuemin="0" aria-valuemax="100"><i></i></span><div class="proglabel"><span id="plabel">Starting…</span><b id="ppct"></b></div></div>' : ""}</div></form></div>`;
+      ${running ? '<div class="progwrap"><span class="progress" id="pbar" role="progressbar" aria-label="Progress" aria-valuemin="0" aria-valuemax="100"><i></i></span><div class="proglabel"><span id="plabel">Starting…</span><b id="ppct"></b></div></div>' : ""}</div></form></div></div></div>`;
   v.innerHTML = html;
   if (result) renderResult();
   document.querySelector("main").scrollTop = 0;
