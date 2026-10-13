@@ -28,6 +28,7 @@ const PATH_ARGS: &[&str] = &[
     "out_dir",
     "tessdata",
     "password_file",
+    "image",
 ];
 const INTEGER_ARGS: &[&str] = &[
     "every", "first", "last", "jobs", "start", "part", "quality",

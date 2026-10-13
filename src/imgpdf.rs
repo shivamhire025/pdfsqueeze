@@ -117,6 +117,40 @@ fn load(path: &Path) -> Result<Img> {
     })
 }
 
+/// A picture split for embedding with transparency: Flate-compressed RGB, and a
+/// matching 8-bit alpha channel to use as a soft mask. Large images are scaled
+/// down to `max_width` pixels so a signature does not bloat the document.
+pub struct Rgba {
+    pub w: u32,
+    pub h: u32,
+    pub rgb: Vec<u8>,
+    pub alpha: Vec<u8>,
+}
+
+pub fn load_rgba(path: &Path, max_width: u32) -> Result<Rgba> {
+    let bytes = std::fs::read(path).with_context(|| format!("cannot read {}", path.display()))?;
+    let mut img = image::load_from_memory(&bytes)
+        .with_context(|| format!("{} is not a supported image", path.display()))?
+        .to_rgba8();
+    if img.width() > max_width {
+        let h = ((img.height() as f64) * (max_width as f64) / (img.width() as f64)).round().max(1.0) as u32;
+        img = image::imageops::resize(&img, max_width, h, image::imageops::FilterType::Lanczos3);
+    }
+    let (w, h) = img.dimensions();
+    let mut rgb = Vec::with_capacity((w * h * 3) as usize);
+    let mut alpha = Vec::with_capacity((w * h) as usize);
+    for p in img.pixels() {
+        rgb.extend_from_slice(&p.0[..3]);
+        alpha.push(p[3]);
+    }
+    let z = |data: &[u8]| -> Result<Vec<u8>> {
+        let mut e = ZlibEncoder::new(Vec::new(), Compression::default());
+        e.write_all(data)?;
+        Ok(e.finish()?)
+    };
+    Ok(Rgba { w, h, rgb: z(&rgb)?, alpha: z(&alpha)? })
+}
+
 pub fn images_to_pdf(
     inputs: &[PathBuf],
     output: &Path,

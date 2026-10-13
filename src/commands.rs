@@ -191,6 +191,7 @@ pub fn command_name(c: &Cmd) -> &'static str {
         Cmd::StripMetadata { .. } => "strip-metadata",
         Cmd::Info { .. } => "info",
         Cmd::Watermark { .. } => "watermark",
+        Cmd::Sign { .. } => "sign",
         Cmd::NumberPages { .. } => "number-pages",
         Cmd::Ocr { .. } => "ocr",
         Cmd::Repair { .. } => "repair",
@@ -202,6 +203,10 @@ pub fn command_name(c: &Cmd) -> &'static str {
         Cmd::Ui { .. } => "ui",
         Cmd::Mcp { .. } => "mcp",
     }
+}
+
+fn plural_pages(n: usize) -> String {
+    if n == 1 { "1 page".to_string() } else { format!("{n} pages") }
 }
 
 fn p(path: &Path) -> String {
@@ -518,6 +523,31 @@ pub fn execute(cmd: Cmd, ctx: &Ctx) -> Result<Done> {
             Ok(Done::ok(
                 format!("Watermarked {n} pages -> {}", output.display()),
                 json!({ "output": p(&output), "pages": n }),
+            ))
+        }
+
+        Cmd::Sign {
+            input,
+            image,
+            page,
+            x,
+            y,
+            width,
+            output,
+        } => {
+            let output = output.unwrap_or_else(|| sibling(&input, "signed"));
+            let r = stamp::sign(&input, &image, &page, x, y, width, &output)?;
+            Ok(Done::ok(
+                format!(
+                    "Signed {} -> {}",
+                    plural_pages(r.signed_pages.len()),
+                    output.display()
+                ),
+                json!({
+                    "output": p(&output),
+                    "total_pages": r.total_pages,
+                    "signed_pages": r.signed_pages,
+                }),
             ))
         }
 

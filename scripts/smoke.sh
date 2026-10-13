@@ -73,6 +73,9 @@ run "organize (reorder + rotate + delete)" 0 -- --json organize three.pdf --orde
 has "organize reports pages" '"pages_kept": 2'
 run "organize refuses an angle that is not 90/180/270" 1 -- --json organize three.pdf --order 1 --rotate 1:45 -o bad.pdf
 has "organize bad angle is invalid_argument" '"code": "invalid_argument"'
+run "sign (visual signature on two pages)" 0 -- --json sign three.pdf --image px.png --page 1,3 --x 50 --y 70 --width 30 -o signed.pdf
+has "sign reports the pages" '"signed_pages"'
+run "sign refuses a width over 100" 1 -- sign three.pdf --image px.png --width 150 -o bad-sign.pdf
 run "linearize" 0 -- linearize three.pdf -o lin.pdf
 run "check" 0 -- check three.pdf
 

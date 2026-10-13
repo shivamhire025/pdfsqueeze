@@ -227,6 +227,27 @@ pub enum Cmd {
         #[arg(short, long)]
         output: Option<PathBuf>,
     },
+    /// Place a picture of a signature on a page (a visual signature, not a digital certificate)
+    Sign {
+        input: PathBuf,
+        /// Signature picture; a PNG with a transparent background looks best
+        #[arg(long)]
+        image: PathBuf,
+        /// Page or pages to sign, e.g. 2, 1-3 or z for the last page
+        #[arg(long, default_value = "z")]
+        page: String,
+        /// Left edge of the signature, in percent of the page width
+        #[arg(long, default_value_t = 60.0)]
+        x: f64,
+        /// Top edge of the signature, in percent of the page height
+        #[arg(long, default_value_t = 78.0)]
+        y: f64,
+        /// Width of the signature, in percent of the page width
+        #[arg(long, default_value_t = 25.0)]
+        width: f64,
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+    },
     /// Add page numbers
     NumberPages {
         input: PathBuf,
