@@ -5,304 +5,429 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>pdfsqueeze: stop uploading your PDFs to the internet</title>
 <meta name="description" content="Stop uploading your PDFs to the internet. Compress, merge, organize, sign and convert PDFs on your own computer. Free, open source, works offline on Mac, Windows and Linux.">
+<meta name="theme-color" content="#0a120e">
 <style>
   :root {
-    --bg: #f1f6ee; --ink: #12241a; --muted: #3a5445; --faint: #566f5f; --line: rgba(24, 58, 36, .16);
-    --accent: #86cd78; --accent-fg: #22652d; --accent-ink: #0b2410; --card: rgba(255, 255, 255, .86);
-    --display: "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Roboto, system-ui, sans-serif;
-    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-    color-scheme: light;
+    --bg: #0a120e; --panel: #0f1a14; --panel-2: #132119; --line: rgba(190, 235, 200, .14); --line-2: rgba(190, 235, 200, .26);
+    --ink: #e8f3ea; --muted: #9fb5a6; --faint: #6f8878; --accent: #86cd78; --accent-ink: #0b2410;
+    --sans: "Archivo", "Avenir Next", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Roboto, system-ui, sans-serif;
+    --mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+    color-scheme: dark;
   }
   * { box-sizing: border-box; }
-  html { scroll-behavior: smooth; }
-  body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.55 var(--display); -webkit-font-smoothing: antialiased; }
+  html { scroll-behavior: smooth; scroll-padding-top: 64px; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.6 var(--sans); -webkit-font-smoothing: antialiased; overflow-x: hidden; }
   a { color: inherit; }
-  .wrap { width: min(1120px, 100% - 40px); margin-inline: auto; }
-  svg.ic { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+  .mono { font-family: var(--mono); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; }
+  svg.ic { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  .wrap { width: min(1240px, 100% - 48px); margin-inline: auto; }
 
-  /* nav */
-  nav.top { position: sticky; top: 0; z-index: 20; backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); background: rgba(241, 246, 238, .8); border-bottom: 1px solid var(--line); }
-  nav.top .wrap { display: flex; align-items: center; gap: 22px; height: 62px; }
-  .brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 600; font-size: 19px; letter-spacing: -.02em; text-decoration: none; }
-  .brand .mark { width: 30px; height: 30px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; }
-  .brand .mark svg { width: 17px; height: 17px; }
-  .brand span span { color: var(--accent-fg); }
-  nav.top .links { margin-left: auto; display: flex; gap: 22px; align-items: center; font-size: 15px; font-weight: 500; }
-  nav.top .links a { text-decoration: none; color: var(--muted); }
-  nav.top .links a:hover { color: var(--ink); }
-  @media (max-width: 720px) { nav.top .links a:not(.btn) { display: none; } }
+  /* ---- top bar ---- */
+  .bar { position: fixed; inset: 0 0 auto 0; z-index: 50; height: 56px; display: flex; align-items: center; background: rgba(10, 18, 14, .78); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-bottom: 1px solid var(--line); }
+  .bar .wrap { display: flex; align-items: center; gap: 28px; width: min(1360px, 100% - 32px); }
+  .logo { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font-weight: 700; letter-spacing: -.01em; }
+  .logo i { width: 28px; height: 28px; border-radius: 8px; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; }
+  .logo i svg { width: 16px; height: 16px; stroke-width: 2.2; }
+  .bar nav { display: flex; gap: 4px; margin-left: 12px; }
+  .bar nav a { font-family: var(--mono); font-size: 11.5px; letter-spacing: .14em; text-transform: uppercase; text-decoration: none; color: var(--muted); padding: 8px 12px; border-radius: 6px; }
+  .bar nav a:hover { color: var(--ink); background: rgba(190, 235, 200, .08); }
+  .bar .go { margin-left: auto; }
+  @media (max-width: 860px) { .bar nav { display: none; } }
 
-  .btn { display: inline-flex; align-items: center; gap: 9px; border: 1px solid var(--line); background: #fff; color: var(--ink); text-decoration: none; padding: 11px 20px; border-radius: 10px; font-weight: 600; font-size: 15.5px; cursor: pointer; font-family: inherit; }
-  .btn:hover { border-color: var(--accent-fg); }
-  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); padding: 14px 26px; font-size: 17px; }
-  .btn.primary:hover { filter: brightness(1.05); }
-  .btn.small { padding: 8px 14px; font-size: 14.5px; }
-  :focus-visible { outline: 2px solid var(--accent-fg); outline-offset: 3px; }
+  .btn { display: inline-flex; align-items: center; gap: 10px; font-family: var(--mono); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; font-weight: 600; text-decoration: none; padding: 13px 20px; border-radius: 6px; border: 1px solid var(--line-2); color: var(--ink); background: transparent; cursor: pointer; }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn.solid { background: var(--ink); color: #08120c; border-color: var(--ink); }
+  .btn.solid:hover { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .btn.sm { padding: 9px 14px; font-size: 11px; }
+  .btn.block { width: 100%; justify-content: center; }
 
-  /* hero */
-  .hero { position: relative; overflow: hidden; padding: 84px 0 70px; background:
-      linear-gradient(90deg, rgba(241, 246, 238, .96) 0%, rgba(241, 246, 238, .86) 45%, rgba(241, 246, 238, .62) 100%),
-      url("hero.jpg") center / cover no-repeat; border-bottom: 1px solid var(--line); }
-  .hero h1 .shout { display: block; font-weight: 800; text-transform: uppercase; letter-spacing: -.035em; color: var(--accent-fg); }
-  .hero h1 { margin: 0; font-weight: 300; font-size: clamp(42px, 6.4vw, 84px); line-height: 1.02; letter-spacing: -.045em; text-wrap: balance; }
-  .hero p.lead { margin: 22px 0 0; max-width: 40ch; font-size: clamp(18px, 2vw, 21px); color: var(--muted); }
-  .cta { margin-top: 30px; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
-  .fine { margin-top: 14px; color: var(--faint); font-size: 14.5px; }
-  .hero-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: 48px; align-items: center; }
-  @media (max-width: 940px) { .hero-grid { grid-template-columns: 1fr; } }
+  /* ---- side index ---- */
+  .index { position: fixed; right: 22px; bottom: 26px; z-index: 40; display: grid; gap: 7px; text-align: right; }
+  .index a { font-family: var(--mono); font-size: 12px; letter-spacing: .16em; text-transform: uppercase; text-decoration: none; color: var(--faint); }
+  .index a:hover, .index a.on { color: var(--accent); }
+  .index a.on::before { content: "· "; }
+  @media (max-width: 1100px) { .index { display: none; } }
 
-  /* product mock-up (real page previews, HTML so it stays sharp) */
-  .shot { background: rgba(255, 255, 255, .94); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 30px 70px rgba(20, 50, 30, .18); overflow: hidden; }
-  .shot .tabs { display: flex; gap: 2px; padding: 0 12px; border-bottom: 1px solid var(--line); overflow: hidden; }
-  .shot .tab { display: inline-flex; gap: 7px; align-items: center; padding: 11px 10px; font-size: 13px; font-weight: 600; color: var(--muted); white-space: nowrap; }
-  .shot .tab .ic { width: 16px; height: 16px; }
-  .shot .tab.on { color: var(--ink); box-shadow: inset 0 -3px 0 var(--accent-fg); }
-  .shot .subs { display: flex; gap: 4px; padding: 8px 10px; background: rgba(24, 58, 36, .035); border-bottom: 1px solid var(--line); overflow: hidden; }
-  .shot .sub { display: inline-flex; gap: 6px; align-items: center; padding: 5px 10px; border-radius: 8px; font-size: 12.5px; font-weight: 500; color: var(--muted); white-space: nowrap; }
-  .shot .sub .ic { width: 15px; height: 15px; }
-  .shot .sub.on { background: rgba(134, 205, 120, .42); color: var(--ink); font-weight: 600; }
-  .shot .bar { margin: 14px 14px 10px; padding: 4px; display: flex; align-items: center; gap: 2px; background: rgba(24, 58, 36, .05); border-radius: 10px; }
-  .shot .bar .ib { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 8px; color: var(--ink); }
-  .shot .bar .ib .ic { width: 18px; height: 18px; }
-  .shot .bar .ib.off { opacity: .4; }
-  .shot .bar .sum { margin-left: auto; padding: 0 10px; font-size: 12.5px; color: var(--muted); font-weight: 500; }
-  .shot .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 0 14px 16px; }
-  .shot .pg { position: relative; background: #fff; border: 1px solid var(--line); border-radius: 8px; padding: 5px 5px 6px; font-size: 12px; font-weight: 700; }
-  .shot .pg img { width: 100%; display: block; border: 1px solid var(--line); border-radius: 4px; }
-  .shot .pg.sel { border-color: var(--accent-fg); box-shadow: inset 0 0 0 2px var(--accent-fg); background: rgba(134, 205, 120, .35); }
-  .shot .pg .chk { position: absolute; top: 9px; left: 9px; width: 18px; height: 18px; border-radius: 5px; background: #fff; border: 1.5px solid var(--faint); display: grid; place-items: center; }
-  .shot .pg.sel .chk { background: var(--accent-fg); border-color: var(--accent-fg); color: #fff; }
-  .shot .pg .chk svg { width: 11px; height: 11px; stroke-width: 3; }
-  .shot .pg .was { color: var(--faint); font-weight: 500; float: right; }
+  /* ---- hero ---- */
+  .hero { position: relative; min-height: 100vh; padding: 56px 0 0; display: grid; border-bottom: 1px solid var(--line); isolation: isolate; }
+  .hero::before { content: ""; position: absolute; inset: 0; z-index: -2; background: url("leaf.jpg") center / cover no-repeat; opacity: .5; }
+  .hero::after { content: ""; position: absolute; inset: 0; z-index: -1; background:
+      radial-gradient(ellipse 70% 60% at 50% 46%, rgba(10, 18, 14, .30) 0%, rgba(10, 18, 14, .88) 100%),
+      linear-gradient(180deg, rgba(10, 18, 14, .55) 0%, rgba(10, 18, 14, .35) 40%, var(--bg) 100%); }
+  .frame { position: relative; margin: 14px; border: 1px solid var(--line); border-radius: 4px; display: grid; grid-template-rows: auto 1fr auto; min-height: calc(100vh - 84px); }
+  .frame .top { display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; border-bottom: 1px solid var(--line); color: var(--faint); }
+  .frame .top b { font-weight: 800; color: var(--ink); font-family: var(--sans); font-size: clamp(18px, 2.4vw, 30px); letter-spacing: .02em; text-transform: uppercase; }
+  .hero-body { display: grid; place-items: center; text-align: center; padding: 40px 24px 28px; }
+  .app-icon { width: 92px; height: 92px; border-radius: 22px; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; box-shadow: 0 18px 50px rgba(134, 205, 120, .25); margin: 0 auto 18px; }
+  .app-icon svg { width: 50px; height: 50px; stroke-width: 2.1; }
+  .chip { display: inline-flex; align-items: center; gap: 10px; font-weight: 600; font-size: 19px; letter-spacing: -.01em; margin-bottom: 26px; }
+  .chip i { font-style: normal; font-family: var(--mono); font-size: 11px; background: var(--accent); color: var(--accent-ink); padding: 3px 7px; border-radius: 3px; }
+  .chip span span { color: var(--accent); }
+  h1 { margin: 0 auto; max-width: 15ch; font-weight: 800; font-size: clamp(40px, 7.4vw, 104px); line-height: .98; letter-spacing: -.035em; text-wrap: balance; font-stretch: 125%; }
+  h1 .up { display: block; text-transform: uppercase; }
+  h1 em { font-style: normal; color: var(--accent); }
+  .lead { margin: 26px auto 0; max-width: 56ch; color: var(--muted); font-size: clamp(16px, 1.5vw, 19px); }
+  .cta { margin-top: 32px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .meta { margin-top: 22px; color: var(--faint); }
+  .frame .foot { display: flex; justify-content: space-between; gap: 16px; padding: 14px 20px; border-top: 1px solid var(--line); color: var(--faint); flex-wrap: wrap; }
 
-  /* sections */
-  section { padding: 84px 0; scroll-margin-top: 62px; }
-  section + section { border-top: 1px solid var(--line); }
-  h2 { margin: 0 0 14px; font-weight: 300; font-size: clamp(30px, 4vw, 48px); line-height: 1.08; letter-spacing: -.035em; text-wrap: balance; }
-  .sub-lead { margin: 0 0 40px; max-width: 58ch; color: var(--muted); font-size: 19px; }
-  .three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
-  @media (max-width: 820px) { .three { grid-template-columns: 1fr; } }
-  .fact { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 24px; }
-  .fact .ic { width: 28px; height: 28px; color: var(--accent-fg); margin-bottom: 14px; }
-  .fact h3 { margin: 0 0 6px; font-size: 19px; font-weight: 600; letter-spacing: -.01em; }
-  .fact p { margin: 0; color: var(--muted); font-size: 16px; }
-  .feat { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
-  @media (max-width: 960px) { .feat { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-  @media (max-width: 520px) { .feat { grid-template-columns: 1fr; } }
-  .f { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 18px; display: grid; gap: 4px; align-content: start; }
-  .f .ic { width: 24px; height: 24px; color: var(--accent-fg); margin-bottom: 8px; }
-  .f b { font-size: 16.5px; font-weight: 600; }
-  .f span { color: var(--muted); font-size: 14.5px; line-height: 1.45; }
+  /* ---- sections ---- */
+  section.s { padding: 0; border-bottom: 1px solid var(--line); }
+  .s-head { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 18px 0; border-bottom: 1px solid var(--line); color: var(--faint); }
+  .s-head b { font-family: var(--sans); font-weight: 800; color: var(--ink); font-size: clamp(18px, 2.4vw, 28px); letter-spacing: .02em; }
+  .s-body { padding: 56px 0 84px; }
+  h2 { margin: 0 0 16px; font-weight: 800; font-size: clamp(30px, 4.6vw, 60px); line-height: 1.02; letter-spacing: -.03em; max-width: 18ch; text-wrap: balance; font-stretch: 120%; }
+  h2 em { font-style: normal; color: var(--accent); }
+  .sub { margin: 0 0 44px; color: var(--muted); max-width: 60ch; font-size: 18px; }
+
+  /* highlights */
+  .hl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border: 1px solid var(--line); border-radius: 4px; }
+  .hl > div { padding: 26px 24px 28px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); background: linear-gradient(180deg, rgba(190, 235, 200, .035), transparent); }
+  .hl > div:nth-child(3n) { border-right: 0; }
+  .hl > div:nth-last-child(-n+3) { border-bottom: 0; }
+  .hl .n { color: var(--accent); display: flex; align-items: center; gap: 10px; }
+  .hl h3 { margin: 16px 0 6px; font-size: 21px; font-weight: 700; letter-spacing: -.015em; }
+  .hl p { margin: 0; color: var(--muted); font-size: 15.5px; }
+  @media (max-width: 900px) { .hl { grid-template-columns: 1fr 1fr; } .hl > div:nth-child(3n) { border-right: 1px solid var(--line); } .hl > div:nth-child(2n) { border-right: 0; } .hl > div:nth-last-child(-n+3) { border-bottom: 1px solid var(--line); } .hl > div:nth-last-child(-n+2) { border-bottom: 0; } }
+  @media (max-width: 560px) { .hl { grid-template-columns: 1fr; } .hl > div { border-right: 0 !important; border-bottom: 1px solid var(--line) !important; } .hl > div:last-child { border-bottom: 0 !important; } }
+
+  /* screenshots */
+  .tabs { display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; }
+  .tabs button { font-family: var(--mono); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); background: transparent; border: 1px solid var(--line); border-radius: 6px; padding: 10px 14px; cursor: pointer; }
+  .tabs button[aria-selected="true"] { color: var(--accent-ink); background: var(--accent); border-color: var(--accent); font-weight: 700; }
+  .stage { border: 1px solid var(--line-2); border-radius: 8px; background: linear-gradient(180deg, #0d1812, #0a120e); padding: clamp(14px, 3vw, 36px); position: relative; }
+  .cap { margin-top: 14px; color: var(--faint); display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .win { background: #f4f8f1; color: #12241a; border-radius: 10px; overflow: hidden; box-shadow: 0 40px 90px rgba(0, 0, 0, .55); border: 1px solid rgba(255, 255, 255, .1); max-width: 920px; margin: 0 auto; font-family: var(--sans); }
+  .win .tbar { display: flex; gap: 2px; padding: 0 12px; border-bottom: 1px solid rgba(24, 58, 36, .14); background: #fff; overflow: hidden; }
+  .win .tbar span { display: inline-flex; gap: 7px; align-items: center; padding: 12px 11px; font-size: 13px; font-weight: 600; color: #4d6657; white-space: nowrap; }
+  .win .tbar span.on { color: #12241a; box-shadow: inset 0 -3px 0 #22652d; }
+  .win .tbar .ic, .win .links .ic { width: 16px; height: 16px; }
+  .win .links { display: flex; gap: 4px; padding: 8px 10px; background: #edf3ea; border-bottom: 1px solid rgba(24, 58, 36, .12); overflow: hidden; }
+  .win .links span { display: inline-flex; gap: 6px; align-items: center; padding: 6px 11px; border-radius: 8px; font-size: 13px; font-weight: 500; color: #4d6657; white-space: nowrap; }
+  .win .links span.on { background: rgba(134, 205, 120, .5); color: #12241a; font-weight: 600; }
+  .win .body { padding: 16px; }
+  .win .tools { display: flex; align-items: center; gap: 2px; padding: 4px; background: rgba(24, 58, 36, .06); border-radius: 10px; margin-bottom: 14px; }
+  .win .tools .ib { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 8px; }
+  .win .tools .sum { margin-left: auto; padding: 0 10px; font-size: 13px; color: #4d6657; font-weight: 500; }
+  .win .pgs { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; }
+  @media (max-width: 700px) { .win .pgs { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  .win .pg { position: relative; background: #fff; border: 1px solid rgba(24, 58, 36, .16); border-radius: 8px; padding: 5px 5px 6px; font-size: 12px; font-weight: 700; }
+  .win .pg img { width: 100%; display: block; border: 1px solid rgba(24, 58, 36, .14); border-radius: 4px; }
+  .win .pg.sel { border-color: #22652d; box-shadow: inset 0 0 0 2px #22652d; background: rgba(134, 205, 120, .4); }
+  .win .pg .k { position: absolute; top: 9px; left: 9px; width: 17px; height: 17px; border-radius: 5px; background: #fff; border: 1.5px solid #566f5f; display: grid; place-items: center; }
+  .win .pg.sel .k { background: #22652d; border-color: #22652d; color: #fff; }
+  .win .pg .k svg { width: 10px; height: 10px; stroke-width: 3; }
+  .win .pg small { float: right; color: #566f5f; font-weight: 500; }
+  .win .cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+  @media (max-width: 700px) { .win .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .win .card { background: #fff; border: 1px solid rgba(24, 58, 36, .16); border-radius: 10px; padding: 9px; }
+  .win .card .th { position: relative; aspect-ratio: 3/4; background: #f4f8f1; border: 1px solid rgba(24, 58, 36, .12); border-radius: 6px; overflow: hidden; }
+  .win .card .th img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
+  .win .card .num { position: absolute; top: 7px; left: 7px; min-width: 24px; height: 24px; border-radius: 99px; background: #86cd78; color: #0b2410; font-weight: 700; font-size: 12.5px; display: grid; place-items: center; }
+  .win .card b { display: block; margin-top: 8px; font-size: 13px; }
+  .win .card small { color: #566f5f; font-size: 12px; }
+  .win .card.add { background: transparent; border-style: dashed; display: grid; }
+  .win .card.add .th { display: grid; place-items: center; color: #566f5f; background: rgba(255, 255, 255, .5); border-style: dashed; }
+  .win .card.add .th svg { width: 34px; height: 34px; stroke-width: 1.3; }
+  .win .sign { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 18px; align-items: start; }
+  @media (max-width: 700px) { .win .sign { grid-template-columns: 1fr; } }
+  .win .sign .pad { background: #fff; border: 1px dashed #566f5f; border-radius: 10px; padding: 14px; }
+  .win .sign .seg { display: inline-flex; padding: 3px; background: rgba(24, 58, 36, .07); border-radius: 9px; gap: 2px; margin-bottom: 10px; }
+  .win .sign .seg span { padding: 6px 11px; border-radius: 7px; font-size: 13px; font-weight: 600; color: #4d6657; }
+  .win .sign .seg span.on { background: #fff; color: #12241a; box-shadow: 0 1px 2px rgba(20, 50, 30, .18); }
+  .win .sign .prev { position: relative; background: #fff; border: 1px solid rgba(24, 58, 36, .16); }
+  .win .sign .prev img { width: 100%; display: block; }
+  .win .sign .prev svg.sg { position: absolute; left: 12%; top: 66%; width: 42%; overflow: visible; }
+  .win .sign .prev .box { position: absolute; left: 11%; top: 62%; width: 44%; height: 14%; outline: 1.5px dashed #22652d; outline-offset: 2px; }
+  .win .sign .prev .hd { position: absolute; left: calc(11% + 44% - 7px); top: calc(62% + 14% - 7px); width: 13px; height: 13px; background: #22652d; border: 2px solid #fff; border-radius: 3px; }
+  .win .done { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; border: 1px solid rgba(34, 101, 45, .4); border-radius: 12px; padding: 16px 18px; margin-bottom: 14px; }
+  .win .done h4 { margin: 0; color: #22652d; font-size: 17px; width: 100%; }
+  .win .strip { display: flex; gap: 8px; width: 100%; }
+  .win .strip img { height: 64px; border-radius: 5px; border: 1px solid rgba(24, 58, 36, .16); }
+  .win .gbtn { background: #86cd78; color: #0b2410; font-weight: 700; padding: 10px 18px; border-radius: 10px; font-size: 14px; }
+  .win .ghost { border: 1px solid rgba(24, 58, 36, .2); background: #fff; padding: 9px 14px; border-radius: 10px; font-size: 14px; font-weight: 600; }
+  [hidden] { display: none !important; }
+
+  /* download */
+  .soon { margin: 0 0 22px; padding: 14px 18px; border-radius: 6px; background: rgba(242, 195, 91, .1); border: 1px solid rgba(242, 195, 91, .4); color: #f2c35b; font-size: 15px; display: none; }
+  .pre-release .soon { display: block; }
+  .cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; border: 1px solid var(--line); border-radius: 4px; }
+  @media (max-width: 900px) { .cols { grid-template-columns: 1fr; } }
+  .col { padding: 26px 24px 28px; border-right: 1px solid var(--line); }
+  .col:last-child { border-right: 0; }
+  @media (max-width: 900px) { .col { border-right: 0; border-bottom: 1px solid var(--line); } .col:last-child { border-bottom: 0; } }
+  .col.mine { background: linear-gradient(180deg, rgba(134, 205, 120, .08), transparent); box-shadow: inset 0 2px 0 var(--accent); }
+  .col h3 { margin: 0 0 4px; font-size: 24px; font-weight: 800; letter-spacing: -.02em; }
+  .col .desc { margin: 0 0 18px; color: var(--muted); font-size: 15px; min-height: 46px; }
+  .col .other { margin: 26px 0 8px; color: var(--faint); }
+  .row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; padding: 14px 0; border-top: 1px solid var(--line); text-decoration: none; align-items: start; }
+  .row:hover b { color: var(--accent); }
+  .row b { font-size: 15.5px; font-weight: 600; }
+  .row .d { grid-column: 1; color: var(--muted); font-size: 13.5px; }
+  .row code { grid-column: 1; color: var(--faint); font: 11.5px/1.4 var(--mono); overflow-wrap: anywhere; }
+  .row .dl-ic { grid-row: 1; grid-column: 2; color: var(--muted); }
+  .install { margin-top: 26px; display: grid; gap: 10px; grid-template-columns: minmax(0, 1fr); }
+  .cmd { min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; border: 1px solid var(--line); background: var(--panel); border-radius: 6px; padding: 12px 12px 12px 16px; }
+  .cmd code { flex: 1 1 100%; min-width: 0; overflow-x: auto; white-space: nowrap; font: 13.5px/1.6 var(--mono); color: #cfe6d3; }
+  @media (min-width: 900px) { .cmd code { flex-basis: 0; } }
+  .cmd small { color: var(--faint); }
+  .cmd button { font-family: var(--mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; background: rgba(190, 235, 200, .1); border: 0; color: var(--ink); border-radius: 5px; padding: 8px 12px; cursor: pointer; }
+  .cmd button:hover { background: var(--accent); color: var(--accent-ink); }
+  .note { color: var(--faint); font-size: 14.5px; margin-top: 18px; max-width: 80ch; }
 
   /* agents */
-  .agents { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 40px; align-items: center; }
-  @media (max-width: 900px) { .agents { grid-template-columns: 1fr; } }
-  .agents > * { min-width: 0; }
-  pre.term { max-width: 100%; margin: 0; background: #11201a; color: #dcecdf; border-radius: 14px; padding: 22px 24px; font: 14px/1.7 var(--mono); overflow-x: auto; box-shadow: 0 24px 60px rgba(20, 50, 30, .2); }
-  pre.term .c { color: #7fa38a; }
-  pre.term .g { color: #9bdc8a; }
-  ul.tick { list-style: none; padding: 0; margin: 20px 0 0; display: grid; gap: 10px; }
-  ul.tick li { display: flex; gap: 10px; color: var(--muted); }
-  ul.tick .ic { width: 20px; height: 20px; color: var(--accent-fg); margin-top: 3px; }
-
-  /* downloads */
-  .dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
-  @media (max-width: 900px) { .dl { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-  @media (max-width: 560px) { .dl { grid-template-columns: 1fr; } }
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 20px; display: grid; gap: 6px; align-content: start; }
-  .card.mine { border-color: var(--accent-fg); box-shadow: 0 0 0 2px rgba(134, 205, 120, .5); }
-  .card h3 { margin: 0; font-size: 18px; font-weight: 600; }
-  .card .req { color: var(--muted); font-size: 14.5px; }
-  .card .note { color: var(--faint); font-size: 13.5px; }
-  .card .btn { margin-top: 10px; justify-content: center; }
-  .install { margin-top: 28px; display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr); }
-  .cmd { min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; background: #11201a; color: #dcecdf; border-radius: 12px; padding: 12px 14px 12px 18px; font: 13.5px/1.5 var(--mono); }
-  .cmd code { flex: 1 1 100%; min-width: 0; overflow-x: auto; white-space: nowrap; padding-bottom: 2px; }
-  @media (min-width: 900px) { .cmd code { flex-basis: 0; } }
-  .cmd button { background: rgba(255, 255, 255, .1); color: #dcecdf; border: 0; border-radius: 8px; padding: 7px 12px; font: 600 13px var(--display); cursor: pointer; }
-  .cmd button:hover { background: rgba(255, 255, 255, .2); }
-  .cmd small { color: #7fa38a; font-family: var(--display); font-size: 13px; }
-  .soon { display: none; margin: 0 0 22px; padding: 14px 18px; border-radius: 12px; background: rgba(242, 195, 91, .22); border: 1px solid rgba(138, 90, 0, .35); color: #5a3b00; font-size: 15.5px; }
-  .pre-release .soon { display: block; }
+  .two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 44px; align-items: center; }
+  @media (max-width: 900px) { .two { grid-template-columns: 1fr; } }
+  .two > * { min-width: 0; }
+  pre.term { margin: 0; background: var(--panel); border: 1px solid var(--line-2); border-radius: 8px; padding: 22px 24px; font: 13.5px/1.75 var(--mono); color: #cfe6d3; overflow-x: auto; max-width: 100%; }
+  pre.term .c { color: var(--faint); } pre.term .g { color: var(--accent); }
+  ul.pts { list-style: none; padding: 0; margin: 22px 0 0; display: grid; gap: 12px; }
+  ul.pts li { display: flex; gap: 12px; color: var(--muted); }
+  ul.pts .ic { color: var(--accent); margin-top: 3px; }
 
   /* progress */
-  .tl { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
-  .tl li { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 24px; padding: 22px 0; border-top: 1px solid var(--line); }
+  .tl { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line); border-radius: 4px; }
+  .tl li { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 24px; padding: 24px; border-top: 1px solid var(--line); }
   .tl li:first-child { border-top: 0; }
-  .tl .when { font-weight: 600; color: var(--accent-fg); font-variant-numeric: tabular-nums; }
-  .tl h3 { margin: 0 0 4px; font-size: 18px; font-weight: 600; }
+  .tl .when { color: var(--accent); }
+  .tl h3 { margin: 0 0 6px; font-size: 20px; font-weight: 700; letter-spacing: -.01em; }
   .tl p { margin: 0; color: var(--muted); font-size: 15.5px; }
-  @media (max-width: 640px) { .tl li { grid-template-columns: 1fr; gap: 4px; } }
-  .checked { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin-top: 34px; }
-  @media (max-width: 760px) { .checked { grid-template-columns: 1fr; } }
-  .checked h3 { margin: 0 0 10px; font-size: 17px; }
-  .checked ul { margin: 0; padding-left: 20px; color: var(--muted); font-size: 15.5px; display: grid; gap: 6px; }
+  @media (max-width: 700px) { .tl li { grid-template-columns: 1fr; gap: 6px; } }
+  .two-col { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0; margin-top: 28px; border: 1px solid var(--line); border-radius: 4px; }
+  .two-col > div { padding: 22px 24px; }
+  .two-col > div:first-child { border-right: 1px solid var(--line); }
+  @media (max-width: 760px) { .two-col { grid-template-columns: 1fr; } .two-col > div:first-child { border-right: 0; border-bottom: 1px solid var(--line); } }
+  .two-col h3 { margin: 0 0 12px; color: var(--accent); }
+  .two-col ul { margin: 0; padding-left: 18px; color: var(--muted); font-size: 15.5px; display: grid; gap: 8px; }
 
-  footer { border-top: 1px solid var(--line); padding: 36px 0 56px; color: var(--muted); font-size: 15px; }
-  footer .wrap { display: flex; gap: 24px; flex-wrap: wrap; justify-content: space-between; }
-  footer a { color: var(--accent-fg); }
+  /* footer */
+  .end { padding: 64px 0 40px; display: grid; gap: 28px; }
+  .end h2 { max-width: 20ch; }
+  .legal { display: flex; justify-content: space-between; gap: 18px; flex-wrap: wrap; color: var(--faint); border-top: 1px solid var(--line); padding-top: 22px; font-size: 14px; }
+  .legal a { color: var(--muted); }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
 </style>
 </head>
 <body class="pre-release">
-<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><symbol id="i-compress" viewBox="0 0 24 24"><path d="M4 9h5V4M20 9h-5V4M4 15h5v5M20 15h-5v5"/></symbol><symbol id="i-organize" viewBox="0 0 24 24"><rect x="3" y="4" width="7" height="9" rx="1.5"/><rect x="14" y="4" width="7" height="9" rx="1.5"/><path d="M6.5 17v3M17.5 17v3M4 20h5M15 20h5"/></symbol><symbol id="i-merge" viewBox="0 0 24 24"><path d="M12 3 3 8l9 5 9-5-9-5z"/><path d="m3 13 9 5 9-5"/></symbol><symbol id="i-split" viewBox="0 0 24 24"><path d="M12 3v18"/><rect x="3" y="5" width="6" height="14" rx="1.5"/><rect x="15" y="5" width="6" height="14" rx="1.5"/></symbol><symbol id="i-sign" viewBox="0 0 24 24"><path d="M4 16.5V20h3.5L19 8.5 15.5 5z"/><path d="m13.5 7 3.5 3.5"/><path d="M12 21h8"/></symbol><symbol id="i-ocr" viewBox="0 0 24 24"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2M8 12h8"/></symbol><symbol id="i-to_images" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m21 16-5-5-9 9"/></symbol><symbol id="i-protect" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></symbol><symbol id="i-watermark" viewBox="0 0 24 24"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></symbol><symbol id="i-number_pages" viewBox="0 0 24 24"><path d="M5 9h14M5 15h14M10 4 8 20M16 4l-2 16"/></symbol><symbol id="i-repair" viewBox="0 0 24 24"><path d="M14.5 6.5a4 4 0 0 0-5.2 5.2L4 17l3 3 5.3-5.3a4 4 0 0 0 5.2-5.2l-2.6 2.6-2.4-.6-.6-2.4z"/></symbol><symbol id="i-pdfa" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="5" rx="1"/><path d="M5 9v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9M10 13h4"/></symbol><symbol id="i-text" viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h14"/></symbol><symbol id="i-unlock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 7.5-2"/></symbol><symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></symbol><symbol id="i-linearize" viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></symbol><symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></symbol><symbol id="i-rotl" viewBox="0 0 24 24"><path d="M4 11a8 8 0 1 1 2.3 5.7"/><path d="M4 4v7h7"/></symbol><symbol id="i-rotate" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></symbol><symbol id="i-delete" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></symbol><symbol id="i-selall" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="m8 12 3 3 5-6"/></symbol><symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></symbol><symbol id="i-reorder" viewBox="0 0 24 24"><path d="M8 4v16M8 4 5 7M8 4l3 3M16 20V4M16 20l-3-3M16 20l3-3"/></symbol><symbol id="i-move" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M12 3 9 6M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"/></symbol><symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol><symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol><symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol><symbol id="i-ok" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></symbol><symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol><symbol id="i-doc" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></symbol></defs></svg>
-<nav class="top"><div class="wrap">
-  <a class="brand" href="#top"><span class="mark"><svg class="ic" viewBox="0 0 24 24"><use href="#i-compress"/></svg></span><span>pdf<span>squeeze</span></span></a>
-  <div class="links">
-    <a href="#features">Features</a><a href="#agents">For AI agents</a><a href="#progress">Progress</a>
-    <a class="btn small" href="#download">Download</a>
-  </div>
-</div></nav>
-
-<header class="hero" id="top"><div class="wrap hero-grid">
-  <div>
-    <h1><span class="shout">Stop uploading</span> your PDFs to the&nbsp;internet.</h1>
-    <p class="lead">pdfsqueeze does it all on your own computer: compress, organize, merge, sign and convert. Free, open source, and it works offline.</p>
-    <div class="cta">
-      <a class="btn primary" id="hero-dl" href="#download"><svg class="ic" viewBox="0 0 24 24"><use href="#i-arrow"/></svg><span id="hero-dl-label">Download</span></a>
-      <a class="btn" href="https://github.com/shivamhire025/pdfsqueeze">View the source</a>
-    </div>
-    <p class="fine">Mac, Windows and Linux. No account, no tracking, nothing leaves your computer.</p>
-  </div>
-  <div class="shot" role="img" aria-label="The app: a grid of real page previews with a toolbar to select, turn, remove and reorder pages">
-    <div class="tabs">
-      <span class="tab"><svg class="ic" viewBox="0 0 24 24"><use href="#i-compress"/></svg>Shrink and fix</span><span class="tab on"><svg class="ic" viewBox="0 0 24 24"><use href="#i-organize"/></svg>Pages</span><span class="tab"><svg class="ic" viewBox="0 0 24 24"><use href="#i-to_images"/></svg>Convert</span><span class="tab"><svg class="ic" viewBox="0 0 24 24"><use href="#i-protect"/></svg>Protect</span><span class="tab"><svg class="ic" viewBox="0 0 24 24"><use href="#i-sign"/></svg>Sign</span>
-    </div>
-    <div class="subs"><span class="sub on"><svg class="ic" viewBox="0 0 24 24"><use href="#i-organize"/></svg>Organize pages</span><span class="sub"><svg class="ic" viewBox="0 0 24 24"><use href="#i-merge"/></svg>Merge</span><span class="sub"><svg class="ic" viewBox="0 0 24 24"><use href="#i-split"/></svg>Split</span><span class="sub"><svg class="ic" viewBox="0 0 24 24"><use href="#i-doc"/></svg>Extract</span></div>
-    <div class="bar"><span class="ib"><svg class="ic" viewBox="0 0 24 24"><use href="#i-selall"/></svg></span><span class="ib"><svg class="ic" viewBox="0 0 24 24"><use href="#i-rotl"/></svg></span><span class="ib"><svg class="ic" viewBox="0 0 24 24"><use href="#i-rotate"/></svg></span><span class="ib"><svg class="ic" viewBox="0 0 24 24"><use href="#i-delete"/></svg></span><span class="ib"><svg class="ic" viewBox="0 0 24 24"><use href="#i-reorder"/></svg></span><span class="ib"><svg class="ic" viewBox="0 0 24 24"><use href="#i-undo"/></svg></span><span class="sum">2 selected</span></div>
-    <div class="grid">
-      <div class="pg"><img alt="" src="img/sample-report-1.png">1</div>
-      <div class="pg sel"><span class="chk"><svg class="ic" viewBox="0 0 24 24"><use href="#i-ok"/></svg></span><img alt="" src="img/sample-report-2.png">2<span class="was">was 3</span></div>
-      <div class="pg sel"><span class="chk"><svg class="ic" viewBox="0 0 24 24"><use href="#i-ok"/></svg></span><img alt="" src="img/sample-report-3.png">3<span class="was">was 2</span></div>
-      <div class="pg"><img alt="" src="img/sample-report-4.png">4</div>
-      <div class="pg"><img alt="" src="img/sample-report-5.png">5</div>
-      <div class="pg"><img alt="" src="img/sample-report-6.png">6</div>
-    </div>
-  </div>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><symbol id="i-compress" viewBox="0 0 24 24"><path d="M4 9h5V4M20 9h-5V4M4 15h5v5M20 15h-5v5"/></symbol><symbol id="i-organize" viewBox="0 0 24 24"><rect x="3" y="4" width="7" height="9" rx="1.5"/><rect x="14" y="4" width="7" height="9" rx="1.5"/><path d="M6.5 17v3M17.5 17v3M4 20h5M15 20h5"/></symbol><symbol id="i-merge" viewBox="0 0 24 24"><path d="M12 3 3 8l9 5 9-5-9-5z"/><path d="m3 13 9 5 9-5"/></symbol><symbol id="i-split" viewBox="0 0 24 24"><path d="M12 3v18"/><rect x="3" y="5" width="6" height="14" rx="1.5"/><rect x="15" y="5" width="6" height="14" rx="1.5"/></symbol><symbol id="i-sign" viewBox="0 0 24 24"><path d="M4 16.5V20h3.5L19 8.5 15.5 5z"/><path d="m13.5 7 3.5 3.5"/><path d="M12 21h8"/></symbol><symbol id="i-ocr" viewBox="0 0 24 24"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2M8 12h8"/></symbol><symbol id="i-to_images" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m21 16-5-5-9 9"/></symbol><symbol id="i-protect" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></symbol><symbol id="i-watermark" viewBox="0 0 24 24"><path d="M12 3s6 6.5 6 11a6 6 0 0 1-12 0c0-4.5 6-11 6-11z"/></symbol><symbol id="i-number_pages" viewBox="0 0 24 24"><path d="M5 9h14M5 15h14M10 4 8 20M16 4l-2 16"/></symbol><symbol id="i-repair" viewBox="0 0 24 24"><path d="M14.5 6.5a4 4 0 0 0-5.2 5.2L4 17l3 3 5.3-5.3a4 4 0 0 0 5.2-5.2l-2.6 2.6-2.4-.6-.6-2.4z"/></symbol><symbol id="i-pdfa" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="5" rx="1"/><path d="M5 9v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9M10 13h4"/></symbol><symbol id="i-text" viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h14"/></symbol><symbol id="i-linearize" viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></symbol><symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></symbol><symbol id="i-rotl" viewBox="0 0 24 24"><path d="M4 11a8 8 0 1 1 2.3 5.7"/><path d="M4 4v7h7"/></symbol><symbol id="i-rotate" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></symbol><symbol id="i-delete" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></symbol><symbol id="i-selall" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="m8 12 3 3 5-6"/></symbol><symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></symbol><symbol id="i-reorder" viewBox="0 0 24 24"><path d="M8 4v16M8 4 5 7M8 4l3 3M16 20V4M16 20l-3-3M16 20l3-3"/></symbol><symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol><symbol id="i-ok" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></symbol><symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol><symbol id="i-doc" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></symbol><symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol></defs></svg>
+<header class="bar"><div class="wrap">
+  <a class="logo" href="#top"><i><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-compress"/></svg></i>pdfsqueeze</a>
+  <nav aria-label="Sections">
+    <a href="#highlights">Highlights</a><a href="#screens">Screens</a><a href="#get">Get it</a><a href="#agents">Agents</a><a href="#progress">Progress</a>
+  </nav>
+  <a class="btn solid sm go" href="#get">Get it</a>
 </div></header>
 
-<section id="private"><div class="wrap">
-  <h2>Private by design.</h2>
-  <p class="sub-lead">Most online PDF tools make you upload your file to their servers. pdfsqueeze does the work on your own computer, so contracts, IDs and scans stay where they are.</p>
-  <div class="three">
-    <div class="fact"><svg class="ic" viewBox="0 0 24 24"><use href="#i-protect"/></svg><h3>Nothing is uploaded</h3><p>Files are processed locally. The app has no accounts, no analytics and makes no network requests for your documents.</p></div>
-    <div class="fact"><svg class="ic" viewBox="0 0 24 24"><use href="#i-check"/></svg><h3>Works offline</h3><p>Everything you need is built in, so there is nothing else to install. Pull the plug and it still works.</p></div>
-    <div class="fact"><svg class="ic" viewBox="0 0 24 24"><use href="#i-doc"/></svg><h3>Free and open source</h3><p>Licensed AGPL-3.0, with the full source on GitHub. Built on the proven engines Ghostscript, qpdf and Tesseract.</p></div>
+<aside class="index" aria-label="On this page">
+  <a href="#highlights" data-s="highlights">Highlights</a>
+  <a href="#screens" data-s="screens">Screenshots</a>
+  <a href="#get" data-s="get">Get it</a>
+  <a href="#agents" data-s="agents">For agents</a>
+  <a href="#progress" data-s="progress">Progress</a>
+</aside>
+
+<main id="top">
+<section class="hero"><div class="frame">
+  <div class="top mono"><span>01 / pdfsqueeze</span><b>PDFSQUEEZE</b></div>
+  <div class="hero-body"><div>
+    <div class="app-icon"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-compress"/></svg></div>
+    <div class="chip"><i>01</i><span>pdf<span>squeeze</span></span></div>
+    <h1><span class="up">Stop uploading</span>your PDFs to the <em>internet.</em></h1>
+    <p class="lead">Compress, organize, merge, sign and convert PDFs in a native app that runs on your own computer. Nothing is uploaded. Open source, offline, and yours.</p>
+    <div class="cta">
+      <a class="btn solid" id="hero-dl" href="#get"><svg class="ic dl-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg><span id="hero-dl-label">Download</span></a>
+      <a class="btn" href="https://github.com/shivamhire025/pdfsqueeze">View the source</a>
+    </div>
+    <p class="meta mono">Free · Open source · AGPL-3.0 · Works offline</p>
+  </div></div>
+  <div class="foot mono"><span>Mac · Windows · Linux</span><span>No account · No tracking</span></div>
+</div></section>
+
+<section class="s" id="highlights"><div class="wrap">
+  <div class="s-head mono"><span>02 / highlights</span><b>HIGHLIGHTS</b></div>
+  <div class="s-body">
+    <h2>Everything you do to a PDF, <em>in one window.</em></h2>
+    <p class="sub">The tools you reach for most, grouped the way you think about them, and none of it leaves your machine.</p>
+    <div class="hl">
+      <div><div class="n mono"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-organize"/></svg>01</div><h3>Organize pages</h3><p>See your real pages. Drag to reorder, turn and delete, then apply it all in one pass.</p></div>
+      <div><div class="n mono"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-compress"/></svg>02</div><h3>Compress</h3><p>Shrink a file, or fit a size limit like 2 MB. Handle whole folders at once.</p></div>
+      <div><div class="n mono"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-merge"/></svg>03</div><h3>Merge and split</h3><p>Join files in the order you drag them. Break one into parts. Save everything in one click.</p></div>
+      <div><div class="n mono"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-sign"/></svg>04</div><h3>Sign</h3><p>Draw, type or use an image, then drop it on the page and resize it.</p></div>
+      <div><div class="n mono"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-ocr"/></svg>05</div><h3>Make searchable</h3><p>OCR for scans, so you can search and copy the text.</p></div>
+      <div><div class="n mono"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-protect"/></svg>06</div><h3>Protect and clean</h3><p>Passwords, hidden metadata, watermarks, page numbers, PDF/A, repair.</p></div>
+    </div>
   </div>
 </div></section>
 
-<section id="features"><div class="wrap">
-  <h2>One window for everything you do to a PDF.</h2>
-  <p class="sub-lead">Related tools sit together, so you are never hunting through menus.</p>
-  <div class="feat">
-    <div class="f"><svg class="ic" viewBox="0 0 24 24"><use href="#i-compress"/></svg><b>Compress</b><span>Shrink a file, or fit a size limit like 2 MB. Batch whole folders.</span></div>
-    <div class="f"><svg class="ic" viewBox="0 0 24 24"><use href="#i-organize"/></svg><b>Organize pages</b><span>See your real pages. Drag to reorder, turn and delete, in one pass.</span></div>
-    <div class="f"><svg class="ic" viewBox="0 0 24 24"><use href="#i-merge"/></svg><b>Merge and split</b><span>Join files in the order you drag them, or break one into parts.</span></div>
-    <div class="f"><svg class="ic" viewBox="0 0 24 24"><use href="#i-sign"/></svg><b>Sign</b><span>Draw, type or use an image, then place it on the page.</span></div>
-    <div class="f"><svg class="ic" viewBox="0 0 24 24"><use href="#i-ocr"/></svg><b>Make searchable</b><span>Add a text layer to scans with OCR, so you can search and copy.</span></div>
-    <div class="f"><svg class="ic" viewBox="0 0 24 24"><use href="#i-to_images"/></svg><b>Convert</b><span>PDF to images, images to PDF, and text extraction.</span></div>
-    <div class="f"><svg class="ic" viewBox="0 0 24 24"><use href="#i-protect"/></svg><b>Protect and clean</b><span>Add or remove a password, strip hidden metadata, inspect a file.</span></div>
-    <div class="f"><svg class="ic" viewBox="0 0 24 24"><use href="#i-watermark"/></svg><b>Stamp</b><span>Watermarks and page numbers, in your own format.</span></div>
-    <div class="f"><svg class="ic" viewBox="0 0 24 24"><use href="#i-repair"/></svg><b>Repair and check</b><span>Rebuild damaged files and look for structural problems.</span></div>
-    <div class="f"><svg class="ic" viewBox="0 0 24 24"><use href="#i-pdfa"/></svg><b>Archive as PDF/A</b><span>Convert for long-term storage.</span></div>
-    <div class="f"><svg class="ic" viewBox="0 0 24 24"><use href="#i-linearize"/></svg><b>Fast web view</b><span>Make a PDF start showing before it has fully loaded.</span></div>
-    <div class="f"><svg class="ic" viewBox="0 0 24 24"><use href="#i-text"/></svg><b>Command line</b><span>Every tool is also a command, with clean JSON output for scripts.</span></div>
+<section class="s" id="screens"><div class="wrap">
+  <div class="s-head mono"><span>03 / screenshots</span><b>SCREENSHOTS</b></div>
+  <div class="s-body">
+    <div class="tabs" role="tablist" aria-label="Screens">
+      <button role="tab" aria-selected="true" data-tab="organize">Organize pages</button>
+      <button role="tab" aria-selected="false" data-tab="merge">Merge</button>
+      <button role="tab" aria-selected="false" data-tab="sign">Sign</button>
+      <button role="tab" aria-selected="false" data-tab="save">Save all</button>
+    </div>
+    <div class="stage">
+      <div class="win" data-panel="organize">
+        <div class="tbar"><span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-compress"/></svg>Shrink and fix</span><span class="on"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-organize"/></svg>Pages</span><span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-to_images"/></svg>Convert</span><span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-protect"/></svg>Protect and clean</span><span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-sign"/></svg>Sign</span></div>
+        <div class="links"><span class="on"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-organize"/></svg>Organize pages</span><span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-merge"/></svg>Merge</span><span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-split"/></svg>Split</span><span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-doc"/></svg>Extract pages</span></div>
+        <div class="body">
+          <div class="tools"><span class="ib"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-selall"/></svg></span><span class="ib"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-rotl"/></svg></span><span class="ib"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-rotate"/></svg></span><span class="ib"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-delete"/></svg></span><span class="ib"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-reorder"/></svg></span><span class="ib"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-undo"/></svg></span><span class="sum">2 selected · 6 of 6 kept</span></div>
+          <div class="pgs">
+            <div class="pg"><img alt="" src="img/sample-report-1.png">1</div>
+            <div class="pg sel"><span class="k"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-ok"/></svg></span><img alt="" src="img/sample-report-2.png">2<small>was 3</small></div>
+            <div class="pg sel"><span class="k"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-ok"/></svg></span><img alt="" src="img/sample-report-3.png">3<small>was 2</small></div>
+            <div class="pg"><img alt="" src="img/sample-report-4.png">4</div>
+            <div class="pg"><img alt="" src="img/sample-report-5.png">5</div>
+            <div class="pg"><img alt="" src="img/sample-report-6.png">6</div>
+          </div>
+        </div>
+      </div>
+      <div class="win" data-panel="merge" hidden>
+        <div class="tbar"><span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-compress"/></svg>Shrink and fix</span><span class="on"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-organize"/></svg>Pages</span><span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-to_images"/></svg>Convert</span><span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-protect"/></svg>Protect and clean</span><span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-sign"/></svg>Sign</span></div>
+        <div class="links"><span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-organize"/></svg>Organize pages</span><span class="on"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-merge"/></svg>Merge</span><span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-split"/></svg>Split</span><span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-doc"/></svg>Extract pages</span></div>
+        <div class="body">
+          <div class="cards">
+            <div class="card"><div class="th"><img alt="" src="img/sample-report-1.png"><span class="num">1</span></div><b>Cover-letter.pdf</b><small>4 pages</small></div>
+            <div class="card"><div class="th"><img alt="" src="img/sample-report-3.png"><span class="num">2</span></div><b>Quarterly-report.pdf</b><small>6 pages</small></div>
+            <div class="card"><div class="th"><img alt="" src="img/sample-report-5.png"><span class="num">3</span></div><b>Appendix.pdf</b><small>12 pages</small></div>
+            <div class="card add"><div class="th"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-plus"/></svg></div><b>Add a PDF</b><small>Joined at the end</small></div>
+          </div>
+        </div>
+      </div>
+      <div class="win" data-panel="sign" hidden>
+        <div class="tbar"><span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-compress"/></svg>Shrink and fix</span><span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-organize"/></svg>Pages</span><span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-to_images"/></svg>Convert</span><span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-protect"/></svg>Protect and clean</span><span class="on"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-sign"/></svg>Sign</span></div>
+        <div class="links"><span class="on"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-sign"/></svg>Sign</span><span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-watermark"/></svg>Add a watermark</span><span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-number_pages"/></svg>Number the pages</span></div>
+        <div class="body"><div class="sign">
+          <div><div class="seg"><span class="on">Draw</span><span>Type</span><span>Image</span></div>
+            <div class="pad"><svg viewBox="0 0 104 54" style="width:100%;height:auto" aria-hidden="true"><path d="M6 44 C 14 10, 22 10, 26 36 S 40 8, 46 30 S 62 40, 68 18 S 82 34, 96 20" fill="none" stroke="#14213d" stroke-width="2.6" stroke-linecap="round"/></svg></div></div>
+          <div class="prev"><img alt="" src="img/sample-report-6.png">
+            <svg class="sg" viewBox="0 0 104 54" aria-hidden="true"><path d="M6 44 C 14 10, 22 10, 26 36 S 40 8, 46 30 S 62 40, 68 18 S 82 34, 96 20" fill="none" stroke="#14213d" stroke-width="3" stroke-linecap="round"/></svg>
+            <span class="box"></span><span class="hd"></span></div>
+        </div></div>
+      </div>
+      <div class="win" data-panel="save" hidden>
+        <div class="tbar"><span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-compress"/></svg>Shrink and fix</span><span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-organize"/></svg>Pages</span><span class="on"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-to_images"/></svg>Convert</span><span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-protect"/></svg>Protect and clean</span><span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-sign"/></svg>Sign</span></div>
+        <div class="links"><span class="on"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-to_images"/></svg>PDF to images</span><span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-doc"/></svg>Images to PDF</span><span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-text"/></svg>Extract text</span><span><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-ocr"/></svg>Make searchable</span></div>
+        <div class="body"><div class="done"><h4>Done</h4>
+          <div class="strip"><img alt="" src="img/sample-report-1.png"><img alt="" src="img/sample-report-2.png"><img alt="" src="img/sample-report-3.png"><img alt="" src="img/sample-report-4.png"><img alt="" src="img/sample-report-5.png"><img alt="" src="img/sample-report-6.png"></div>
+          <span class="gbtn">Save all 6 images</span><span class="ghost">Open folder</span></div></div>
+      </div>
+    </div>
+    <div class="cap mono"><span id="cap">Organize pages: drag, turn, remove</span><span>Real pages. Made-up sample document.</span></div>
   </div>
 </div></section>
 
-<section id="agents"><div class="wrap agents">
-  <div>
-    <h2>Built for AI agents too.</h2>
-    <p class="sub-lead" style="margin-bottom:0">Every tool is a command with predictable JSON output and stable exit codes. It never prompts, and it can run as an MCP server so assistants can use it safely.</p>
-    <ul class="tick">
-      <li><svg class="ic" viewBox="0 0 24 24"><use href="#i-ok"/></svg><span>One JSON object per call, with named error codes an agent can act on.</span></li>
-      <li><svg class="ic" viewBox="0 0 24 24"><use href="#i-ok"/></svg><span>The MCP server refuses to start without an explicit folder allow-list.</span></li>
-      <li><svg class="ic" viewBox="0 0 24 24"><use href="#i-ok"/></svg><span>Passwords never travel on a command line.</span></li>
-    </ul>
+<section class="s" id="get"><div class="wrap">
+  <div class="s-head mono"><span>04 / get pdfsqueeze</span><b>GET IT</b></div>
+  <div class="s-body">
+    <h2>One download. <em>Nothing else to install.</em></h2>
+    <p class="sub">Free, with no account. The tools it needs are built in, and there is no installer or admin password.</p>
+    <div class="soon" role="status">The first public release is being prepared. These buttons will start working the moment it is published; until then they open the project's releases page.</div>
+    <div class="cols" id="dl">
+      <div class="col" data-os="mac">
+        <h3>macOS</h3><p class="desc">Apple Silicon and Intel Macs.</p>
+        <a class="btn solid block" data-file="pdfsqueeze-macos-arm64.tar.gz" href="#"><svg class="ic dl-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg>Apple Silicon</a>
+        <div class="other mono">Other files for macOS</div>
+        <a class="row" data-file="pdfsqueeze-macos-x86_64.tar.gz" href="#"><b>Intel Macs</b><svg class="ic dl-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg><span class="d">Needs macOS 15 or later.</span><code>pdfsqueeze-macos-x86_64.tar.gz</code></a>
+        <a class="row" data-file="pdfsqueeze-macos-arm64.tar.gz" href="#"><b>Command-line tool</b><svg class="ic dl-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg><span class="d">The same download: also runs headless for scripts and agents.</span><code>pdfsqueeze-macos-arm64.tar.gz</code></a>
+      </div>
+      <div class="col" data-os="windows">
+        <h3>Windows</h3><p class="desc">Windows 10 and 11, 64-bit. Includes OCR.</p>
+        <a class="btn solid block" data-file="pdfsqueeze-windows-x64.zip" href="#"><svg class="ic dl-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg>Portable, 64-bit</a>
+        <div class="other mono">Other files for Windows</div>
+        <a class="row" data-file="pdfsqueeze-windows-x86.zip" href="#"><b>Portable, 32-bit</b><svg class="ic dl-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg><span class="d">Older 32-bit Windows. No OCR in this build.</span><code>pdfsqueeze-windows-x86.zip</code></a>
+        <a class="row" data-file="pdfsqueeze-windows-x64.zip" href="#"><b>Command-line tool</b><svg class="ic dl-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg><span class="d">The same download: also runs headless.</span><code>pdfsqueeze-windows-x64.zip</code></a>
+      </div>
+      <div class="col" data-os="linux">
+        <h3>Linux</h3><p class="desc">Any distro with glibc 2.35 or newer (Ubuntu 22.04+).</p>
+        <a class="btn solid block" data-file="pdfsqueeze-linux-x86_64.tar.gz" href="#"><svg class="ic dl-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg>Tarball, x86_64</a>
+        <div class="other mono">Other files for Linux</div>
+        <a class="row" data-file="pdfsqueeze-linux-arm64.tar.gz" href="#"><b>Tarball, arm64</b><svg class="ic dl-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg><span class="d">ARM servers and laptops.</span><code>pdfsqueeze-linux-arm64.tar.gz</code></a>
+        <a class="row" href="https://github.com/shivamhire025/pdfsqueeze"><b>Build from source</b><svg class="ic dl-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg><span class="d">Rust and the open source engines.</span><code>github.com/shivamhire025/pdfsqueeze</code></a>
+      </div>
+    </div>
+    <div class="install">
+      <div class="cmd"><code id="c1">curl -fsSL https://raw.githubusercontent.com/shivamhire025/pdfsqueeze/main/install.sh | sh</code><small class="mono">macOS · Linux</small><button data-copy="c1">Copy</button></div>
+      <div class="cmd"><code id="c2">irm https://raw.githubusercontent.com/shivamhire025/pdfsqueeze/main/install.ps1 | iex</code><small class="mono">Windows</small><button data-copy="c2">Copy</button></div>
+    </div>
+    <p class="note">The one-line installers need no password or administrator rights. The apps are not code-signed yet, so if you download an archive in a browser your system may ask you to confirm the first launch.</p>
   </div>
-<pre class="term"><span class="c"># compress, then check the result as JSON</span>
+</div></section>
+
+<section class="s" id="agents"><div class="wrap">
+  <div class="s-head mono"><span>05 / for agents</span><b>FOR AGENTS</b></div>
+  <div class="s-body"><div class="two">
+    <div>
+      <h2>Built for <em>AI agents</em> too.</h2>
+      <p class="sub" style="margin-bottom:0">Every tool is a command with predictable JSON output and stable exit codes. It never prompts, and it can run as an MCP server.</p>
+      <ul class="pts">
+        <li><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-ok"/></svg><span>One JSON object per call, with named error codes an agent can act on.</span></li>
+        <li><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-ok"/></svg><span>The MCP server refuses to start without an explicit folder allow-list.</span></li>
+        <li><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-ok"/></svg><span>Passwords never travel on a command line.</span></li>
+      </ul>
+    </div>
+<pre class="term"><span class="c"># compress, then read the result as JSON</span>
 <span class="g">$</span> pdfsqueeze --json compress report.pdf --level recommended
 <span class="c">{ "ok": true, "command": "compress", "result": { "saved_percent": 38.5 } }</span>
 
-<span class="c"># place a signature on the last page</span>
+<span class="c"># sign the last page</span>
 <span class="g">$</span> pdfsqueeze sign contract.pdf --image sig.png --page z
 
 <span class="c"># let an assistant use it, limited to one folder</span>
 <span class="g">$</span> pdfsqueeze mcp --allow-dir ~/Documents/pdfs</pre>
+  </div></div>
 </div></section>
 
-<section id="download"><div class="wrap">
-  <h2>Download.</h2>
-  <p class="sub-lead">One download per computer. No installer, no admin password, and nothing else to install.</p>
-  <div class="soon" role="status">The first public release is being prepared. These buttons will start working the moment it is published; until then they open the project's releases page.</div>
-  <div class="dl" id="dl">
-    <div class="card" data-os="mac">
-      <h3>macOS, Apple Silicon</h3><div class="req">M1 and newer. Needs macOS 14 or later.</div>
-      <a class="btn" data-file="pdfsqueeze-macos-arm64.tar.gz" href="#"><svg class="ic" viewBox="0 0 24 24"><use href="#i-arrow"/></svg>Download</a>
+<section class="s" id="progress"><div class="wrap">
+  <div class="s-head mono"><span>06 / progress</span><b>PROGRESS</b></div>
+  <div class="s-body">
+    <h2>Built <em>in the open.</em></h2>
+    <p class="sub">Here is what exists, and how well each part has been checked.</p>
+    <ol class="tl">
+      <li><span class="when mono">13 Oct 2026</span><div><h3>Organize, sign, and a calmer window</h3><p>One screen to reorder, turn and delete pages with real previews. Draw, type or use an image to sign. Merge with thumbnails and drag to reorder. One Save all for many results, a real progress bar, and a new look.</p></div></li>
+      <li><span class="when mono">10 Oct 2026</span><div><h3>The app window and six downloads</h3><p>A real application window with drag-and-drop. Packages for macOS (Apple Silicon and Intel), Windows (64 and 32-bit) and Linux (x86_64 and arm64), each with its tools bundled.</p></div></li>
+      <li><span class="when mono">09 Oct 2026</span><div><h3>The engine and the command line</h3><p>22 commands on top of Ghostscript, qpdf and Tesseract, a JSON mode, and an MCP server for AI agents.</p></div></li>
+    </ol>
+    <div class="two-col">
+      <div><h3 class="mono">Checked</h3><ul>
+        <li>Automated tests and an end-to-end test of every command on macOS, Windows and Linux.</li>
+        <li>Packages build and run in a clean environment with no other software installed.</li>
+        <li>Signature and page-edit placement measured against the output files, including rotated pages.</li>
+      </ul></div>
+      <div><h3 class="mono">Not yet checked</h3><ul>
+        <li>The Windows window has not yet been used by a person on a Windows machine.</li>
+        <li>Dragging a file from Finder or Explorer onto the window.</li>
+        <li>Signing places a picture of your signature. Certificate-based digital signatures are not built.</li>
+      </ul></div>
     </div>
-    <div class="card" data-os="mac-intel">
-      <h3>macOS, Intel</h3><div class="req">Needs macOS 15 or later.</div>
-      <a class="btn" data-file="pdfsqueeze-macos-x86_64.tar.gz" href="#"><svg class="ic" viewBox="0 0 24 24"><use href="#i-arrow"/></svg>Download</a>
-    </div>
-    <div class="card" data-os="windows">
-      <h3>Windows, 64-bit</h3><div class="req">Windows 10 or 11, with OCR.</div>
-      <a class="btn" data-file="pdfsqueeze-windows-x64.zip" href="#"><svg class="ic" viewBox="0 0 24 24"><use href="#i-arrow"/></svg>Download</a>
-    </div>
-    <div class="card" data-os="windows32">
-      <h3>Windows, 32-bit</h3><div class="req">Older 32-bit systems.</div><div class="note">Everything except OCR, which has no 32-bit build.</div>
-      <a class="btn" data-file="pdfsqueeze-windows-x86.zip" href="#"><svg class="ic" viewBox="0 0 24 24"><use href="#i-arrow"/></svg>Download</a>
-    </div>
-    <div class="card" data-os="linux">
-      <h3>Linux, x86_64</h3><div class="req">glibc 2.35 or newer (Ubuntu 22.04 and later).</div>
-      <a class="btn" data-file="pdfsqueeze-linux-x86_64.tar.gz" href="#"><svg class="ic" viewBox="0 0 24 24"><use href="#i-arrow"/></svg>Download</a>
-    </div>
-    <div class="card" data-os="linux-arm">
-      <h3>Linux, arm64</h3><div class="req">glibc 2.35 or newer.</div>
-      <a class="btn" data-file="pdfsqueeze-linux-arm64.tar.gz" href="#"><svg class="ic" viewBox="0 0 24 24"><use href="#i-arrow"/></svg>Download</a>
-    </div>
-  </div>
-  <div class="install">
-    <div class="cmd"><code id="c1">curl -fsSL https://raw.githubusercontent.com/shivamhire025/pdfsqueeze/main/install.sh | sh</code><small>macOS and Linux</small><button data-copy="c1">Copy</button></div>
-    <div class="cmd"><code id="c2">irm https://raw.githubusercontent.com/shivamhire025/pdfsqueeze/main/install.ps1 | iex</code><small>Windows</small><button data-copy="c2">Copy</button></div>
-  </div>
-  <p class="fine" style="margin-top:18px">The one-line installers need no password or administrator rights and avoid the usual "unidentified developer" prompts. The apps are not code-signed yet, so if you download an archive in a browser your system may ask you to confirm the first launch.</p>
-</div></section>
-
-<section id="progress"><div class="wrap">
-  <h2>Progress, in the open.</h2>
-  <p class="sub-lead">This project is being built in public. Here is what exists, and how well each part has been checked.</p>
-  <ol class="tl">
-    <li><span class="when">13 October 2026</span><div><h3>Organize, sign, and a calmer window</h3><p>One screen to reorder, turn and delete pages with real previews. Draw, type or use an image to sign. Merge with thumbnails and drag to reorder. One Save all button for many results, a real progress bar, and a new light green look.</p></div></li>
-    <li><span class="when">10 October 2026</span><div><h3>The app window and six downloads</h3><p>A real application window with drag-and-drop. Packages for macOS (Apple Silicon and Intel), Windows (64 and 32-bit) and Linux (x86_64 and arm64), each with its engines bundled.</p></div></li>
-    <li><span class="when">9 October 2026</span><div><h3>The engine and the command line</h3><p>22 commands on top of Ghostscript, qpdf and Tesseract, plus a JSON mode and an MCP server for AI agents.</p></div></li>
-  </ol>
-  <div class="checked">
-    <div><h3>Checked</h3><ul>
-      <li>Automated tests and an end-to-end test of every command, on macOS, Windows and Linux.</li>
-      <li>All six packages build and run in a clean environment with no other software installed.</li>
-      <li>Placement of signatures and page edits measured against the output files, including rotated pages.</li>
-    </ul></div>
-    <div><h3>Not yet checked</h3><ul>
-      <li>The Windows window has not yet been used by a person on a Windows machine.</li>
-      <li>Dragging a file from Finder or Explorer onto the window.</li>
-      <li>Certificate-based digital signatures are not built; signing places a picture of your signature.</li>
-    </ul></div>
   </div>
 </div></section>
+</main>
 
-<footer><div class="wrap">
-  <div>pdfsqueeze is free software under the <a href="https://www.gnu.org/licenses/agpl-3.0.html">AGPL-3.0</a>.<br>It uses Ghostscript, qpdf and Tesseract. This page has no tracking and sets no cookies.</div>
-  <div><a href="https://github.com/shivamhire025/pdfsqueeze">Source on GitHub</a> &nbsp;·&nbsp; <a href="https://github.com/shivamhire025/pdfsqueeze/releases">Releases</a></div>
+<footer><div class="wrap end">
+  <h2>Open source · <em>free.</em></h2>
+  <div class="cta" style="justify-content:flex-start">
+    <a class="btn solid" href="https://github.com/shivamhire025/pdfsqueeze"><svg class="ic dl-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>View on GitHub</a>
+    <a class="btn" href="#get">Get it</a>
+  </div>
+  <div class="legal">
+    <span>pdfsqueeze is free software under the <a href="https://www.gnu.org/licenses/agpl-3.0.html">AGPL-3.0</a>. It uses Ghostscript, qpdf and Tesseract. No tracking, no cookies.</span>
+    <span>Background photograph via <a href="https://www.magnific.com/free-photos-vectors/nature-wallpaper-green/2">Magnific</a> free photos. <a href="https://github.com/shivamhire025/pdfsqueeze/blob/main/CREDITS.md">Credits</a></span>
+  </div>
 </div></footer>
 
 <script>
-  // Flip this to true once the first release (tag v0.1.0) has been published and its files are attached.
+  // Set to true once the first release (tag v0.1.0) is published with its files attached.
   const RELEASE_READY = false;
   const REPO = "https://github.com/shivamhire025/pdfsqueeze";
   if (RELEASE_READY) document.body.classList.remove("pre-release");
   document.querySelectorAll("#dl [data-file]").forEach((a) => {
     a.href = RELEASE_READY ? `${REPO}/releases/latest/download/${a.dataset.file}` : `${REPO}/releases`;
   });
-  // Highlight the download that fits this computer (best effort; never blocks anything).
+  // Best-effort: highlight the column for this computer and label the main button.
   const ua = navigator.userAgent || "", plat = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || "";
   let os = "";
   if (/Win/i.test(plat + ua)) os = "windows";
@@ -310,17 +435,34 @@
   else if (/Linux|X11/i.test(plat + ua) && !/Android/i.test(ua)) os = "linux";
   const names = { mac: "Download for Mac", windows: "Download for Windows", linux: "Download for Linux" };
   if (os) {
-    const card = document.querySelector(`#dl [data-os="${os}"]`);
-    if (card) card.classList.add("mine");
+    const col = document.querySelector(`#dl [data-os="${os}"]`);
+    if (col) col.classList.add("mine");
     document.getElementById("hero-dl-label").textContent = names[os];
   }
+  // Screenshot tabs.
+  const caps = { organize: "Organize pages: drag, turn, remove", merge: "Merge: numbered, draggable, one-click add", sign: "Sign: draw, then place and resize on the page", save: "Save all: one button, one folder" };
+  const tabs = document.querySelectorAll(".tabs [data-tab]");
+  tabs.forEach((t) => t.addEventListener("click", () => {
+    tabs.forEach((x) => x.setAttribute("aria-selected", String(x === t)));
+    document.querySelectorAll("[data-panel]").forEach((p) => { p.hidden = p.dataset.panel !== t.dataset.tab; });
+    document.getElementById("cap").textContent = caps[t.dataset.tab];
+  }));
+  // Copy buttons.
   document.querySelectorAll("[data-copy]").forEach((b) => b.addEventListener("click", async () => {
-    const t = document.getElementById(b.dataset.copy).textContent;
-    try { await navigator.clipboard.writeText(t); b.textContent = "Copied"; } catch (e) {
-      const r = document.createRange(); r.selectNodeContents(document.getElementById(b.dataset.copy)); const s = getSelection(); s.removeAllRanges(); s.addRange(r); b.textContent = "Press Cmd+C";
+    const el = document.getElementById(b.dataset.copy);
+    try { await navigator.clipboard.writeText(el.textContent); b.textContent = "Copied"; } catch (e) {
+      const r = document.createRange(); r.selectNodeContents(el); const s = getSelection(); s.removeAllRanges(); s.addRange(r); b.textContent = "Press Cmd+C";
     }
     setTimeout(() => { b.textContent = "Copy"; }, 1800);
   }));
+  // Side index: mark the section in view.
+  const links = [...document.querySelectorAll(".index a")];
+  if ("IntersectionObserver" in window) {
+    const io = new IntersectionObserver((es) => es.forEach((e) => {
+      if (e.isIntersecting) links.forEach((l) => l.classList.toggle("on", l.dataset.s === e.target.id));
+    }), { rootMargin: "-40% 0px -55% 0px" });
+    document.querySelectorAll("section.s").forEach((s) => io.observe(s));
+  }
 </script>
 </body>
 </html>
