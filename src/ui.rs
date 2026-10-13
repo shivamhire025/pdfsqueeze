@@ -22,6 +22,8 @@ use std::sync::{Arc, Mutex};
 use tiny_http::{Header, Method, Request, Response, Server};
 
 const PAGE: &str = include_str!("ui.html");
+/// Background image for the window (original artwork, see scripts/make-hero.py).
+const HERO: &[u8] = include_bytes!("../assets/hero.jpg");
 
 /// Largest single upload accepted (1 GiB).
 const MAX_UPLOAD: u64 = 1 << 30;
@@ -247,6 +249,13 @@ fn handle(state: &State, mut req: Request) {
                 .with_header(header("Cache-Control", "no-store"))
                 .with_header(header("X-Content-Type-Options", "nosniff"))
                 .with_header(header("Referrer-Policy", "no-referrer"));
+            let _ = req.respond(resp);
+        }
+
+        (Method::Get, "/hero.jpg") => {
+            let resp = Response::from_data(HERO)
+                .with_header(header("Content-Type", "image/jpeg"))
+                .with_header(header("Cache-Control", "max-age=86400"));
             let _ = req.respond(resp);
         }
 

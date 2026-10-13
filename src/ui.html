@@ -5,43 +5,29 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>pdfsqueeze</title>
 <style>
-  /* Layout concept: a document rail on the left (real page thumbnails you pick from),
-     a task area on the right. One thing on screen at a time: choose, set, result. */
+  /* Look: cinematic dark editorial. A warm hero image sits behind frosted-glass panels,
+     with a cream accent, large light headlines and pill buttons. One look, dark only. */
   :root {
-    --bg: #eef1f6;        /* cool paper */
-    --rail: #f7f8fb;
-    --surface: #ffffff;
-    --ink: #0f1828;
-    --muted: #5b677a;
-    --faint: #8793a6;
-    --line: #dce1ea;
-    --accent: #2750e0;    /* cobalt */
-    --accent-ink: #ffffff;
-    --accent-soft: #e7edff;
-    --good: #117a55;
-    --good-soft: #e1f5ec;
-    --warn: #8f5500;
-    --warn-soft: #fff1d1;
-    --bad: #bf2f25;
-    --bad-soft: #fde9e6;
-    --shadow: 0 1px 2px rgba(15, 24, 40, .05), 0 10px 28px rgba(15, 24, 40, .07);
-    --radius: 14px;
-    color-scheme: light;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) {
-      --bg: #0a0e16; --rail: #0f141e; --surface: #151b27; --ink: #e8edf6; --muted: #98a5ba; --faint: #6f7c91;
-      --line: #232c3c; --accent: #7f9cff; --accent-ink: #0a1024; --accent-soft: #1a2547;
-      --good: #4ed79f; --good-soft: #0f2a20; --warn: #f2c35b; --warn-soft: #2e2410; --bad: #ff8d83; --bad-soft: #321614;
-      --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 10px 28px rgba(0, 0, 0, .35);
-      color-scheme: dark;
-    }
-  }
-  :root[data-theme="dark"] {
-    --bg: #0a0e16; --rail: #0f141e; --surface: #151b27; --ink: #e8edf6; --muted: #98a5ba; --faint: #6f7c91;
-    --line: #232c3c; --accent: #7f9cff; --accent-ink: #0a1024; --accent-soft: #1a2547;
-    --good: #4ed79f; --good-soft: #0f2a20; --warn: #f2c35b; --warn-soft: #2e2410; --bad: #ff8d83; --bad-soft: #321614;
-    --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 10px 28px rgba(0, 0, 0, .35);
+    --bg: #0b0806;
+    --rail: rgba(14, 10, 8, .52);
+    --surface: rgba(38, 28, 22, .58);
+    --ink: #f4e8dc;
+    --muted: #c4b3a4;
+    --faint: #94836f;
+    --line: rgba(255, 232, 210, .15);
+    --accent: #f0c9ae;     /* cream-peach */
+    --accent-ink: #2a170c;
+    --accent-soft: rgba(240, 201, 174, .16);
+    --good: #94e3b8;
+    --good-soft: rgba(148, 227, 184, .12);
+    --warn: #f2c35b;
+    --warn-soft: rgba(242, 195, 91, .12);
+    --bad: #ff9d92;
+    --bad-soft: rgba(255, 157, 146, .14);
+    --glass: rgba(20, 14, 11, .50);
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 18px 48px rgba(0, 0, 0, .42);
+    --radius: 18px;
+    --display: "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Roboto, system-ui, sans-serif;
     color-scheme: dark;
   }
 
@@ -262,6 +248,57 @@
   .veil.on { display: grid; }
   .veil div { background: var(--surface); border: 2px dashed var(--accent); border-radius: 22px; padding: 38px 54px; font-size: 22px; font-weight: 700; box-shadow: var(--shadow); }
   .hidden { display: none !important; }
+
+  /* ---- cinematic layer: hero image, frame, glass, type ---- */
+  html { background: var(--bg); }
+  body { background: transparent; }
+  body::before { content: ""; position: fixed; inset: 0; z-index: -1; background:
+      linear-gradient(90deg, rgba(8, 5, 3, .86) 0%, rgba(8, 5, 3, .58) 40%, rgba(8, 5, 3, .30) 100%),
+      var(--hero, none) center / cover no-repeat; }
+  .app { margin: 14px; height: calc(100% - 28px); border: 1px solid rgba(240, 201, 174, .42); border-radius: 28px; overflow: hidden; background: rgba(6, 4, 3, .22); }
+  .rail { background: var(--rail); -webkit-backdrop-filter: blur(22px) saturate(1.15); backdrop-filter: blur(22px) saturate(1.15); border-right: 1px solid var(--line); }
+  .sheet, .banner, .tile, .doc, .pg-bar { -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); }
+  .sheet { background: var(--glass); border-radius: 22px; }
+  .doc { background: rgba(255, 238, 222, .05); border-radius: 16px; }
+  .doc[aria-pressed="true"] { background: var(--accent-soft); }
+  .thumb { background: rgba(0, 0, 0, .35); border-color: var(--line); }
+  input[type=text], input[type=number], input[type=password], select { background: rgba(0, 0, 0, .30); border-radius: 12px; }
+  .pg { background: rgba(255, 238, 222, .05); }
+  .pg .frame { background: rgba(0, 0, 0, .35); }
+  .pg-bar { background: var(--glass); border-radius: 16px; }
+  .preset { background: rgba(0, 0, 0, .25); }
+  .grps { background: var(--glass); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); border-radius: 999px; padding: 5px; }
+  .grp { border-radius: 999px; }
+  .grp.icon-only { background: var(--glass); border-radius: 999px; }
+  .sub { background: rgba(255, 238, 222, .06); }
+  .hero h1, .task-head h1 { font-family: var(--display); font-weight: 300; letter-spacing: -.035em; }
+  .task-head h1 { font-size: 34px; line-height: 1.1; }
+  .task-head p { font-size: 15.5px; }
+  .brand b { font-family: var(--display); font-weight: 400; letter-spacing: -.02em; }
+  .btn { border-radius: 999px; background: rgba(255, 238, 222, .07); }
+  .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); padding: 13px 28px; }
+  .btn.primary:hover { filter: brightness(1.06); }
+  .btn.good { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .mark { background: var(--accent); color: var(--accent-ink); border-radius: 50%; }
+  .progress i, .progress::after { background: var(--accent); }
+  .bar .fill, .bar.after .fill { background: var(--accent); }
+  .bar.after .fill { background: var(--good); }
+
+  /* first screen: big headline, pill actions, numbered chapters */
+  .cine { min-height: calc(100vh - 150px); display: flex; flex-direction: column; justify-content: flex-end; gap: 22px; padding-bottom: 6px; }
+  .cine h1 { margin: 0; font-family: var(--display); font-weight: 300; font-size: clamp(44px, 6.4vw, 92px); line-height: 1.0; letter-spacing: -.045em; color: #f6e9dd; text-wrap: balance; }
+  .cine p { margin: 0; max-width: 46ch; color: var(--muted); font-size: 17px; }
+  .cta { display: flex; gap: 10px; align-items: center; }
+  .pill { border: 0; border-radius: 999px; background: var(--accent); color: var(--accent-ink); font-weight: 650; font-size: 15.5px; padding: 15px 26px; cursor: pointer; }
+  .pill.round { width: 52px; height: 52px; padding: 0; display: grid; place-items: center; background: rgba(255, 238, 222, .12); color: var(--ink); border: 1px solid var(--line); }
+  .pill:hover { filter: brightness(1.07); }
+  .pill:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+  .chapters { list-style: none; margin: 18px 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px; }
+  .chapters li { border-top: 1px solid var(--line); padding-top: 12px; display: grid; gap: 4px; position: relative; }
+  .chapters li:first-child::before { content: ""; position: absolute; top: -1px; left: 0; width: 46%; height: 2px; background: var(--accent); }
+  .chapters b { font-size: 12.5px; color: var(--muted); font-weight: 600; letter-spacing: .06em; font-variant-numeric: tabular-nums; }
+  .chapters span { font-size: 15px; }
+  @media (max-width: 760px) { .app { margin: 8px; height: calc(100% - 16px); border-radius: 20px; } .chapters { grid-template-columns: 1fr; gap: 12px; } }
 </style>
 </head>
 <body>
@@ -277,6 +314,7 @@
     <symbol id="i-extract" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 14h6M12 11l3 3-3 3"/></symbol>
     <symbol id="i-delete" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></symbol>
     <symbol id="i-organize" viewBox="0 0 24 24"><rect x="3" y="4" width="7" height="9" rx="1.5"/><rect x="14" y="4" width="7" height="9" rx="1.5"/><path d="M6.5 17v3M17.5 17v3M4 20h5M15 20h5"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
     <symbol id="i-rotl" viewBox="0 0 24 24"><path d="M4 11a8 8 0 1 1 2.3 5.7"/><path d="M4 4v7h7"/></symbol>
     <symbol id="i-selall" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="m8 12 3 3 5-6"/></symbol>
     <symbol id="i-selnone" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3" stroke-dasharray="3 3"/></symbol>
@@ -322,6 +360,7 @@
 "use strict";
 const TOKEN = new URLSearchParams(location.search).get("t") || "";
 const GRID_TOOL = "organize";
+document.documentElement.style.setProperty("--hero", `url("/hero.jpg?t=${encodeURIComponent(TOKEN)}")`);
 
 const CATS = [
   { id: "shrink", icon: "compress", label: "Shrink and fix", tools: ["compress", "repair", "check", "linearize", "pdfa"] },
@@ -477,11 +516,19 @@ function sheetArt() {
 }
 
 function renderEmpty(v) {
-  v.innerHTML = `<div class="hero empty">${sheetArt()}
-      <h1>Drop a PDF to get started</h1>
-      <p>Organize pages, compress, convert, make scans searchable and more. It all happens on this computer, and nothing is uploaded.</p>
-      <div style="margin-top:14px"><button class="btn primary" id="choose" type="button">Choose files</button></div></div>
-    <div class="foot"><span>Everything runs here. Close this window to stop.</span><button class="link" type="button" data-tool="doctor">${ico("doctor")} Check setup</button></div>`;
+  v.innerHTML = `<section class="cine">
+      <h1>Your PDFs,<br>on your machine.</h1>
+      <p>Organize pages, compress, convert and make scans searchable. Nothing is ever uploaded.</p>
+      <div class="cta">
+        <button class="pill" id="choose" type="button">Choose files</button>
+        <button class="pill round" type="button" data-choose aria-label="Choose files">${ico("arrow")}</button>
+      </div>
+      <ol class="chapters">
+        <li><b>01</b><span>Drop in a PDF</span></li>
+        <li><b>02</b><span>Pick what to do</span></li>
+        <li><b>03</b><span>Save the result</span></li>
+      </ol>
+    </section>`;
 }
 
 // Tools are clubbed into a few icon groups; picking a group shows its tools beside each other.
@@ -589,7 +636,7 @@ $("view").addEventListener("click", (e) => {
   }
   const t = e.target.closest("[data-tool]");
   if (t) { if (!running) openTool(t.dataset.tool); return; }
-  if (e.target.closest("#choose")) { picker.click(); return; }
+  if (e.target.closest("#choose, [data-choose]")) { picker.click(); return; }
   const p = e.target.closest("[data-preset]");
   if (p) { preset = p.dataset.preset; document.querySelectorAll("[data-preset]").forEach((b) => b.setAttribute("aria-pressed", String(b === p))); return; }
   if (e.target.closest("#run")) { run(); return; }
