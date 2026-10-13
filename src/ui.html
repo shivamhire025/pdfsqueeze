@@ -221,8 +221,20 @@
   .task-head h1 { font-size: 22px; }
 
   /* ---- page grid (reorder) ---- */
-  .pg-bar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 0 0 12px; }
-  .pg-bar .btn { padding: 7px 13px; font-size: 14px; }
+  .pg-bar { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin: 0 0 14px; padding: 6px; background: var(--bg); border: 1px solid var(--line); border-radius: 14px; position: sticky; top: 0; z-index: 5; }
+  .ib { width: 40px; height: 40px; border-radius: 10px; border: 1px solid transparent; background: transparent; color: var(--ink); cursor: pointer; display: grid; place-items: center; padding: 0; }
+  .ib:hover:not(:disabled), .ib:focus-visible { background: var(--accent-soft); color: var(--accent); outline: none; }
+  .ib.danger:hover:not(:disabled) { background: var(--bad-soft); color: var(--bad); }
+  .ib:disabled { opacity: .35; cursor: default; }
+  .ib svg.i { width: 21px; height: 21px; }
+  .pg-bar .sep { width: 1px; align-self: stretch; background: var(--line); margin: 6px 4px; }
+  .pg .check { position: absolute; top: 6px; left: 6px; width: 22px; height: 22px; border-radius: 7px; background: var(--surface); border: 1.5px solid var(--faint); display: grid; place-items: center; color: transparent; z-index: 2; }
+  .pg .check svg.i { width: 14px; height: 14px; stroke-width: 3; }
+  .pg:hover .check { border-color: var(--accent); }
+  .pg.sel { border-color: var(--accent); box-shadow: inset 0 0 0 2px var(--accent); background: var(--accent-soft); }
+  .pg.sel .check { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .pg-ghost .stack { position: absolute; right: -8px; top: -8px; min-width: 26px; height: 26px; border-radius: 99px; background: var(--accent); color: var(--accent-ink); font-weight: 700; display: grid; place-items: center; padding: 0 7px; }
+  .pg-bar .pg-sum { margin-left: auto; padding: 0 10px; color: var(--muted); font-weight: 600; font-size: 13.5px; }
   .pagegrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); gap: 14px; padding: 4px 0 6px; user-select: none; -webkit-user-select: none; }
   .pg { border: 1px solid var(--line); background: var(--bg); border-radius: 12px; padding: 8px 8px 10px; cursor: grab; touch-action: none; display: grid; gap: 7px; position: relative; }
   .pg:hover { border-color: var(--accent); }
@@ -236,13 +248,6 @@
   .pg.moved { border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); background: var(--accent-soft); }
   .pg.moved .was { color: var(--accent); font-weight: 600; }
   .pg-ghost { position: fixed; z-index: 30; pointer-events: none; margin: 0; transform: rotate(2.5deg); box-shadow: var(--shadow); cursor: grabbing; opacity: .96; }
-  .pg-bar .pg-sum { font-weight: 650; margin-right: auto; color: var(--ink); font-variant-numeric: tabular-nums; }
-  .pg .tools { display: flex; justify-content: center; gap: 4px; }
-  .pg .tb { width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); cursor: pointer; display: grid; place-items: center; padding: 0; }
-  .pg .tb svg.i { width: 17px; height: 17px; }
-  .pg .tb:hover, .pg .tb:focus-visible { color: var(--accent); border-color: var(--accent); outline: none; }
-  .pg .tb.del:hover { color: var(--bad); border-color: var(--bad); background: var(--bad-soft); }
-  .pg .tb.del.restore { color: var(--good); border-color: var(--good); }
   .pg .frame img { transition: transform .18s ease; }
   .pg .gone { display: none; position: absolute; top: 40%; left: 0; right: 0; text-align: center; font-weight: 700; color: var(--bad); text-shadow: 0 0 6px var(--bg); pointer-events: none; }
   .pg.deleted { border-style: dashed; background: var(--bad-soft); }
@@ -270,6 +275,10 @@
     <symbol id="i-extract" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 14h6M12 11l3 3-3 3"/></symbol>
     <symbol id="i-delete" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></symbol>
     <symbol id="i-organize" viewBox="0 0 24 24"><rect x="3" y="4" width="7" height="9" rx="1.5"/><rect x="14" y="4" width="7" height="9" rx="1.5"/><path d="M6.5 17v3M17.5 17v3M4 20h5M15 20h5"/></symbol>
+    <symbol id="i-rotl" viewBox="0 0 24 24"><path d="M4 11a8 8 0 1 1 2.3 5.7"/><path d="M4 4v7h7"/></symbol>
+    <symbol id="i-selall" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="m8 12 3 3 5-6"/></symbol>
+    <symbol id="i-selnone" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3" stroke-dasharray="3 3"/></symbol>
+    <symbol id="i-undo" viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></symbol>
     <symbol id="i-reorder" viewBox="0 0 24 24"><path d="M8 4v16M8 4 5 7M8 4l3 3M16 20V4M16 20l-3-3M16 20l3-3"/></symbol>
     <symbol id="i-rotate" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></symbol>
     <symbol id="i-to_images" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m21 16-5-5-9 9"/></symbol>
@@ -517,13 +526,18 @@ function renderTask(v) {
   }
   if (current.name === GRID_TOOL) {
     html += `<div class="field"><span class="lbl">Pages</span>
-      <div class="hint" style="margin:0 0 10px">Drag a page to move it. Use the buttons on a page to turn or remove it. Previews are your actual pages.</div>
-      <div class="pg-bar" id="pgbar" hidden>
-        <span class="pg-sum" id="pgsum"></span>
-        <button class="btn" type="button" id="pg-left">Turn all left</button>
-        <button class="btn" type="button" id="pg-right">Turn all right</button>
-        <button class="btn" type="button" id="pg-reverse">Reverse order</button>
-        <button class="btn" type="button" id="pg-reset">Undo all changes</button></div>
+      <div class="hint" style="margin:0 0 10px">Click pages to select them (Shift-click for a range), then use the icons. Drag a page, or a selection, to move it.</div>
+      <div class="pg-bar" id="pgbar" hidden role="toolbar" aria-label="Page actions">
+        <button class="ib" type="button" data-pgact="selall" title="Select all pages" aria-label="Select all pages"><svg class="i"><use href="#i-selall"/></svg></button>
+        <button class="ib" type="button" data-pgact="selnone" title="Clear selection" aria-label="Clear selection"><svg class="i"><use href="#i-selnone"/></svg></button>
+        <span class="sep" aria-hidden="true"></span>
+        <button class="ib" type="button" data-pgact="left" title="Turn selected pages left" aria-label="Turn selected pages left"><svg class="i"><use href="#i-rotl"/></svg></button>
+        <button class="ib" type="button" data-pgact="right" title="Turn selected pages right" aria-label="Turn selected pages right"><svg class="i"><use href="#i-rotate"/></svg></button>
+        <button class="ib danger" type="button" data-pgact="del" id="pg-del" title="Remove selected pages" aria-label="Remove selected pages"><svg class="i"><use href="#i-delete"/></svg></button>
+        <span class="sep" aria-hidden="true"></span>
+        <button class="ib" type="button" data-pgact="reverse" title="Reverse the page order" aria-label="Reverse the page order"><svg class="i"><use href="#i-reorder"/></svg></button>
+        <button class="ib" type="button" data-pgact="reset" title="Undo all changes" aria-label="Undo all changes"><svg class="i"><use href="#i-undo"/></svg></button>
+        <span class="pg-sum" id="pgsum" aria-live="polite"></span></div>
       <div id="pagearea"><div class="pg-loading">Loading page previews…</div></div></div>`;
   }
   html += main.map((k) => fieldHtml(k, props[k], required.has(k))).join("");
@@ -576,9 +590,10 @@ function openTool(name) {
 }
 
 
-/* ---------- reorder: draggable page previews ---------- */
+/* ---------- organize: select, turn, remove and drag page previews ---------- */
 let pg = newPg(null);
-function newPg(id) { return { id, count: 0, order: [], status: "idle", nodes: new Map(), rot: new Map(), del: new Set() }; }
+function newPg(id) { return { id, count: 0, order: [], status: "idle", nodes: new Map(), rot: new Map(), del: new Set(), sel: new Set(), anchor: null }; }
+const norm = (d) => ((d % 360) + 360) % 360;
 function pageDocId() {
   const sel = document.getElementById("f_file");
   return sel && sel.value ? sel.value : null;
@@ -612,19 +627,15 @@ function drawPages() {
   const area = document.getElementById("pagearea");
   if (!area || pg.status !== "ready") return;
   const grid = document.createElement("div");
-  grid.className = "pagegrid"; grid.id = "pagegrid"; grid.setAttribute("role", "list");
+  grid.className = "pagegrid"; grid.id = "pagegrid"; grid.setAttribute("role", "listbox"); grid.setAttribute("aria-multiselectable", "true");
   for (let n = 1; n <= pg.count; n++) {
     let node = pg.nodes.get(n);
     if (!node) {
       node = document.createElement("div");
-      node.className = "pg"; node.tabIndex = 0; node.dataset.page = String(n); node.setAttribute("role", "listitem");
-      node.innerHTML = `<div class="frame"><img alt="Page ${n}" draggable="false" src="/api/pagethumb?id=${encodeURIComponent(pg.id)}&page=${n}&t=${encodeURIComponent(TOKEN)}"></div>
+      node.className = "pg"; node.tabIndex = 0; node.dataset.page = String(n); node.setAttribute("role", "option");
+      node.innerHTML = `<span class="check" aria-hidden="true"><svg class="i"><use href="#i-ok"/></svg></span>
+        <div class="frame"><img alt="Page ${n}" draggable="false" src="/api/pagethumb?id=${encodeURIComponent(pg.id)}&page=${n}&t=${encodeURIComponent(TOKEN)}"></div>
         <div class="cap"><span class="pos"></span><span class="was"></span></div>
-        <div class="tools">
-          <button type="button" class="tb" data-act="left" title="Turn left" aria-label="Turn page ${n} left"><svg class="i" viewBox="0 0 24 24"><path d="M4 11a8 8 0 1 1 2.3 5.7"/><path d="M4 4v7h7"/></svg></button>
-          <button type="button" class="tb" data-act="right" title="Turn right" aria-label="Turn page ${n} right"><svg class="i"><use href="#i-rotate"/></svg></button>
-          <button type="button" class="tb del" data-act="del" title="Remove page" aria-label="Remove page ${n}"><svg class="i"><use href="#i-delete"/></svg></button>
-        </div>
         <span class="gone">Removed</span>`;
       pg.nodes.set(n, node);
     }
@@ -637,34 +648,45 @@ function drawPages() {
 function layoutPages(focusPage) {
   const grid = document.getElementById("pagegrid");
   if (!grid) return;
-  let pos = 0, removed = 0, turned = 0, moved = 0;
+  let pos = 0, removed = 0, turned = 0;
   pg.order.forEach((n) => {
     const node = pg.nodes.get(n);
     grid.appendChild(node);
-    const gone = pg.del.has(n), rot = (pg.rot.get(n) || 0) % 360;
+    const gone = pg.del.has(n), rot = norm(pg.rot.get(n) || 0), picked = pg.sel.has(n);
     node.classList.toggle("deleted", gone);
-    if (gone) { removed++; node.querySelector(".pos").textContent = "–"; node.querySelector(".was").textContent = "page " + n; }
+    node.classList.toggle("sel", picked);
+    node.setAttribute("aria-selected", String(picked));
+    if (gone) { removed++; node.querySelector(".pos").textContent = "–"; node.querySelector(".was").textContent = "page " + n; node.classList.remove("moved"); }
     else {
       pos++;
       node.querySelector(".pos").textContent = String(pos);
       const wasMoved = n !== pos;
-      if (wasMoved) moved++;
       node.querySelector(".was").textContent = (wasMoved ? "was " + n : "") + (rot ? (wasMoved ? " · " : "") + rot + "°" : "");
       node.classList.toggle("moved", wasMoved || rot !== 0);
     }
     if (rot && !gone) turned++;
-    node.querySelector(".del").setAttribute("aria-label", (gone ? "Restore page " : "Remove page ") + n);
-    node.querySelector(".del").title = gone ? "Restore page" : "Remove page";
-    node.querySelector(".del").classList.toggle("restore", gone);
     node.setAttribute("aria-label", gone ? `Page ${n}, removed` : `Page ${n}, now position ${pos}${rot ? ", turned " + rot + " degrees" : ""}`);
     fitRotation(node, rot);
   });
+  const k = pg.sel.size;
   const sum = document.getElementById("pgsum");
   if (sum) {
-    const parts = [`${pos} of ${pg.count} pages kept`];
+    const parts = [k ? `${k} selected` : "None selected", `${pos} of ${pg.count} kept`];
     if (removed) parts.push(`${removed} removed`);
     if (turned) parts.push(`${turned} turned`);
     sum.textContent = parts.join(" · ");
+  }
+  document.querySelectorAll("#pgbar [data-pgact]").forEach((b) => {
+    const a = b.dataset.pgact;
+    b.disabled = (a === "left" || a === "right" || a === "del" || a === "selnone") && k === 0;
+  });
+  const del = document.getElementById("pg-del");
+  if (del) {
+    const restore = k > 0 && [...pg.sel].every((n) => pg.del.has(n));
+    const label = restore ? "Restore selected pages" : "Remove selected pages";
+    del.title = label; del.setAttribute("aria-label", label);
+    del.firstElementChild.firstElementChild.setAttribute("href", restore ? "#i-undo" : "#i-delete");
+    del.classList.toggle("danger", !restore);
   }
   if (focusPage) { const f = pg.nodes.get(focusPage); if (f) f.focus(); }
 }
@@ -681,83 +703,116 @@ function fitRotation(node, rot) {
   }
   img.style.transform = rot ? `rotate(${rot}deg) scale(${k})` : "";
 }
+// Move one page, or a whole group (kept in its current relative order), next to `target`.
+function moveGroup(group, target) {
+  const set = new Set(group);
+  if (set.has(target)) return;
+  const first = Math.min(...group.map((n) => pg.order.indexOf(n)));
+  const forward = first < pg.order.indexOf(target);
+  const moving = pg.order.filter((n) => set.has(n));
+  const rest = pg.order.filter((n) => !set.has(n));
+  const at = rest.indexOf(target) + (forward ? 1 : 0);
+  rest.splice(at, 0, ...moving);
+  pg.order = rest;
+}
 function movePage(n, toIndex) {
   const from = pg.order.indexOf(n);
   toIndex = Math.max(0, Math.min(pg.order.length - 1, toIndex));
   if (from < 0 || from === toIndex) return;
   pg.order.splice(from, 1); pg.order.splice(toIndex, 0, n);
 }
+function targets(n) { return pg.sel.size && pg.sel.has(n) ? [...pg.sel] : [n]; }
+function pageAction(act, n) {
+  const group = n ? targets(n) : [...pg.sel];
+  if (act === "left" || act === "right") group.forEach((p) => pg.rot.set(p, norm((pg.rot.get(p) || 0) + (act === "left" ? -90 : 90))));
+  else if (act === "del") {
+    const allGone = group.length > 0 && group.every((p) => pg.del.has(p));
+    group.forEach((p) => (allGone ? pg.del.delete(p) : pg.del.add(p)));
+  }
+  else if (act === "selall") pg.sel = new Set(pg.order);
+  else if (act === "selnone") pg.sel.clear();
+  else if (act === "reverse") pg.order.reverse();
+  else if (act === "reset") { pg.order.sort((a, b) => a - b); pg.rot.clear(); pg.del.clear(); pg.sel.clear(); }
+}
+function selectClick(n, shift) {
+  if (shift && pg.anchor !== null) {
+    const a = pg.order.indexOf(pg.anchor), b = pg.order.indexOf(n);
+    pg.order.slice(Math.min(a, b), Math.max(a, b) + 1).forEach((p) => pg.sel.add(p));
+  } else {
+    pg.sel.has(n) ? pg.sel.delete(n) : pg.sel.add(n);
+    pg.anchor = n;
+  }
+}
 (function wirePages() {
   let drag = null;
   const view = $("view");
   view.addEventListener("pointerdown", (e) => {
     const tile = e.target.closest(".pg");
-    if (!tile || e.button !== 0 || e.target.closest(".tb")) return;
-    drag = { page: Number(tile.dataset.page), tile, x: e.clientX, y: e.clientY, active: false, ghost: null, dx: 0, dy: 0 };
+    if (!tile || e.button !== 0) return;
+    drag = { page: Number(tile.dataset.page), tile, x: e.clientX, y: e.clientY, active: false, ghost: null, dx: 0, dy: 0, group: [], shift: e.shiftKey };
   });
   window.addEventListener("pointermove", (e) => {
     if (!drag) return;
     if (!drag.active) {
       if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < 5) return;
       drag.active = true;
+      drag.group = targets(drag.page);
       const r = drag.tile.getBoundingClientRect();
       drag.dx = e.clientX - r.left; drag.dy = e.clientY - r.top;
       const g = drag.tile.cloneNode(true);
       g.classList.add("pg-ghost"); g.style.width = r.width + "px";
+      if (drag.group.length > 1) g.insertAdjacentHTML("beforeend", `<span class="stack">${drag.group.length}</span>`);
       document.body.appendChild(g); drag.ghost = g;
-      drag.tile.classList.add("lifted");
+      drag.group.forEach((n) => pg.nodes.get(n).classList.add("lifted"));
     }
     drag.ghost.style.left = (e.clientX - drag.dx) + "px";
     drag.ghost.style.top = (e.clientY - drag.dy) + "px";
     const over = document.elementFromPoint(e.clientX, e.clientY);
     const t = over && over.closest && over.closest(".pg");
-    if (t && t !== drag.tile) {
-      movePage(drag.page, pg.order.indexOf(Number(t.dataset.page)));
-      layoutPages();
+    if (t) {
+      const target = Number(t.dataset.page);
+      if (!drag.group.includes(target)) { moveGroup(drag.group, target); layoutPages(); drag.group.forEach((n) => pg.nodes.get(n).classList.add("lifted")); }
     }
     const main = document.querySelector("main"), mr = main.getBoundingClientRect();
     if (e.clientY < mr.top + 60) main.scrollTop -= 16;
     else if (e.clientY > mr.bottom - 60) main.scrollTop += 16;
   });
-  const end = () => {
+  const end = (e) => {
     if (!drag) return;
-    if (drag.ghost) drag.ghost.remove();
-    drag.tile.classList.remove("lifted");
-    drag = null;
+    const d = drag; drag = null;
+    if (d.ghost) d.ghost.remove();
+    d.tile.classList.remove("lifted");
+    if (d.group) d.group.forEach((n) => { const nd = pg.nodes.get(n); if (nd) nd.classList.remove("lifted"); });
+    if (!d.active && e && e.type === "pointerup") { selectClick(d.page, d.shift); layoutPages(d.page); }
+    else if (d.active) layoutPages();
   };
   window.addEventListener("pointerup", end);
-  window.addEventListener("pointercancel", end);
+  window.addEventListener("pointercancel", () => end(null));
   view.addEventListener("keydown", (e) => {
     const tile = e.target.closest && e.target.closest(".pg");
     if (!tile) return;
-    const n = Number(tile.dataset.page), i = pg.order.indexOf(n);
+    const n = Number(tile.dataset.page);
+    const mod = e.metaKey || e.ctrlKey;
+    if (mod && (e.key === "a" || e.key === "A")) { e.preventDefault(); pageAction("selall"); layoutPages(n); return; }
+    if (e.key === " " || e.key === "Enter") { e.preventDefault(); selectClick(n, e.shiftKey); layoutPages(n); return; }
+    if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); pageAction("del", n); layoutPages(n); return; }
+    if (e.key === "r" || e.key === "R") { e.preventDefault(); pageAction(e.shiftKey ? "left" : "right", n); layoutPages(n); return; }
+    const i = pg.order.indexOf(n);
     let to = null;
     if (e.key === "ArrowLeft" || e.key === "ArrowUp") to = i - 1;
     else if (e.key === "ArrowRight" || e.key === "ArrowDown") to = i + 1;
     else if (e.key === "Home") to = 0;
     else if (e.key === "End") to = pg.order.length - 1;
-    if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); pg.del.has(n) ? pg.del.delete(n) : pg.del.add(n); layoutPages(n); return; }
-    if (e.key === "r" || e.key === "R") { e.preventDefault(); pg.rot.set(n, (((pg.rot.get(n) || 0) + (e.shiftKey ? -90 : 90)) % 360 + 360) % 360); layoutPages(n); return; }
-    if (to === null) return;
+    if (to === null || to < 0 || to >= pg.order.length) return;
     e.preventDefault();
-    movePage(n, to); layoutPages(n);
+    if (targets(n).length > 1) moveGroup(targets(n), pg.order[to]); else movePage(n, to);
+    layoutPages(n);
   });
   view.addEventListener("click", (e) => {
-    const b = e.target.closest(".pg .tb");
-    if (b) {
-      const n = Number(b.closest(".pg").dataset.page);
-      const turn = (page, d) => pg.rot.set(page, (((pg.rot.get(page) || 0) + d) % 360 + 360) % 360);
-      if (b.dataset.act === "left") turn(n, -90);
-      else if (b.dataset.act === "right") turn(n, 90);
-      else if (pg.del.has(n)) pg.del.delete(n); else pg.del.add(n);
-      layoutPages();
-      return;
-    }
-    const all = (d) => pg.order.forEach((n) => { if (!pg.del.has(n)) pg.rot.set(n, (((pg.rot.get(n) || 0) + d) % 360 + 360) % 360); });
-    if (e.target.closest("#pg-reverse")) { pg.order.reverse(); layoutPages(); }
-    else if (e.target.closest("#pg-left")) { all(-90); layoutPages(); }
-    else if (e.target.closest("#pg-right")) { all(90); layoutPages(); }
-    else if (e.target.closest("#pg-reset")) { pg.order = pg.order.slice().sort((a, b) => a - b); pg.rot.clear(); pg.del.clear(); layoutPages(); }
+    const b = e.target.closest("#pgbar [data-pgact]");
+    if (!b || b.disabled) return;
+    pageAction(b.dataset.pgact, null);
+    layoutPages();
   });
 })();
 

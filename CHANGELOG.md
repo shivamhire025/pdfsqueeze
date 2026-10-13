@@ -7,8 +7,9 @@ Plain-language record of what pdfsqueeze can do and how well that has been check
 
 ### Added
 - **Organize pages**: one screen for reordering, rotating and deleting pages. Real page
-  previews, drag to move, buttons to turn or remove a page, keyboard shortcuts (arrows to move,
-  R to turn, Delete to remove). Also a command: `pdfsqueeze organize book.pdf --order 3,1,2 --rotate 1:90`.
+  previews; click pages to select them (Shift-click for a range), then use icon buttons to turn
+  or remove the selection; drag a page or a whole selection to move it. Keyboard: arrows to
+  move, R to turn, Delete to remove, Space to select. Also a command: `pdfsqueeze organize book.pdf --order 3,1,2 --rotate 1:90`.
   *Verified:* output order and rotations checked against the produced file; 2 new smoke checks
   and 1 unit test. Drag and buttons exercised in a browser tab, **not** yet by hand in the app window.
 - **Real progress bar**: shows pages processed, compression attempts and files finished, with a
