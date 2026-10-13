@@ -343,7 +343,7 @@
   .doc { grid-template-columns: 34px minmax(0, 1fr) auto; gap: 10px; padding: 6px 8px; border: 0; border-radius: 8px; background: transparent; }
   .doc:hover { background: rgba(24, 58, 36, .06); }
   .doc[aria-pressed="true"] { background: rgba(24, 58, 36, .06); }
-  .doc.active { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent-fg); }
+  .doc.active { background: var(--accent-soft); box-shadow: none; }
   .thumb { width: 34px; height: 44px; border-radius: 4px; }
   .doc .n { font-size: 13.5px; font-weight: 600; }
   .doc .s { font-size: 12px; }
@@ -399,7 +399,7 @@
   .ib:disabled { opacity: .45; }
   .grp[aria-pressed="true"] { box-shadow: inset 0 -3px 0 var(--accent-fg); }
   .sub[aria-pressed="true"] { background: rgba(134, 205, 120, .42); }
-  .doc.active { background: rgba(134, 205, 120, .38); }
+  .doc.active { background: rgba(134, 205, 120, .38); box-shadow: none; border-color: transparent; }
   .pg.sel { background: rgba(134, 205, 120, .42); box-shadow: inset 0 0 0 2px var(--accent-fg); border-color: var(--accent-fg); }
   .pg .check { border-color: var(--muted); }
   :focus-visible { outline: 2px solid var(--accent-fg); outline-offset: 2px; }
