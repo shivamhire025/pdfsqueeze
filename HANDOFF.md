@@ -1,181 +1,195 @@
 # pdfsqueeze: handoff
 
 **Read this first when picking the project up in a new chat or after context was lost.**
-Everything here was checked against the repo and CI on the date below; where something was
-only written and never run, it says so.
+Everything here was checked against the repo, CI and the machine on the date below. Where
+something was only written and never run, it says so.
 
-- **Last updated:** 2026-10-10.
-- **Git state:** at the time of writing `origin/main` was `4eef85d` and everything after it was
-  local only (the verified-status docs, the desktop window and redesigned UI, and this file).
-  **Check the real state with `git log --oneline origin/main..HEAD`** (as of 2026-10-13 four commits were local only: reorder previews, progress bar, organize, workspace) rather than trusting this
-  line. Pushing triggers CI, which needs the owner's go-ahead.
+- **Last updated:** 2026-10-13 (end of day).
+- **Git state:** do not trust a number written here. Run `git status -sb` and
+  `git log --oneline origin/main..HEAD`. On 2026-10-13 the tree was clean with **42 commits, 2 not
+  pushed**: `19a945c` (sentence-case headline) and `6053d1b` (double-click launch and the Mac app).
 - **Repo:** https://github.com/shivamhire025/pdfsqueeze (public, AGPL-3.0)
-- **Local path:** `~/Projects/pdfsqueeze/` (the Obsidian vault only holds notes about it:
-  `Wiki/Projects/pdfsqueeze.md` and `Wiki/log.md`)
-- **Update this file** whenever you finish a piece of work (status table, backlog, date, commit).
+- **Live landing page:** https://shivamhire025.github.io/pdfsqueeze/ (GitHub Pages, branch `main`,
+  folder `/docs`). It shows the last *pushed* version.
+- **Local path:** `~/Projects/pdfsqueeze/`
+- **Private record (owner's Obsidian vault, not in this repo):**
+  `Wiki/Projects/pdfsqueeze - Log.md` (status snapshot, decisions, commit-by-commit timeline,
+  verification ledger) and `Wiki/Projects/pdfsqueeze - Session history.md` (how the owner likes to work).
+- **Public record:** `CHANGELOG.md`, `CREDITS.md`, `ROADMAP.md` (verified-versus-written tables).
+- **Keep this file current:** update status, backlog, date and commit when you finish work.
 
 ## What it is and what the owner asked for
 
-An offline, open-source alternative to upload-based PDF websites (iLovePDF, Smallpdf). Files
-never leave the machine. Written in Rust; it drives three engines (Ghostscript, qpdf,
-Tesseract) and ships them bundled.
+An offline, open-source alternative to upload-based PDF websites (iLovePDF, Smallpdf). Files never
+leave the machine. Written in Rust; it drives three engines (Ghostscript, qpdf, Tesseract) and
+ships them bundled. One binary is a command line, an app window and an MCP server.
 
-The owner (Shivam, GitHub `shivamhire025`) stated these requirements:
+The owner (GitHub `shivamhire025`) stated these requirements:
 
-1. Free and open source. **Never pay for anything**: no Apple Developer account, no code
-   signing certificates, no paid CI, no payment methods.
-2. Downloads for: **Mac** (Apple Silicon and Intel), **Windows** (64 and 32-bit), and a
-   **CLI for AI agents**. Linux was added with the owner's OK because agents run there.
-3. A **real application window**, never a browser tab, and a **genuinely good design**. A first
-   version that opened in the browser was rejected as "one of the ugliest UIs I have seen".
-4. No surprises: say what a job consumes and ask before remote actions (see "Working rules").
+1. Free and open source. **Never pay for anything**: no Apple Developer account, no code-signing
+   certificates, no paid CI, no payment methods.
+2. Downloads for **Mac** (Apple Silicon and Intel), **Windows** (64 and 32-bit) and a **CLI for AI
+   agents**. Linux was added with the owner's OK because agents run there.
+3. A **real application window**, never a browser tab, with a genuinely good design. Direction so
+   far: light theme, nature green, flat and quiet, icons over text, one white card for the work,
+   real thumbnails everywhere, drag to reorder, one "Save all" for many results.
+4. No surprises: say what a job consumes and ask before any remote action.
+5. A landing page: dark forest-green editorial style modelled on getartcraft.com/apps/photocraft,
+   hero copy "Stop uploading your PDFs to the internet".
 
 ## Status at a glance
 
 | Area | State | Evidence |
 |---|---|---|
-| 22 commands (compress, merge, split, extract, delete, reorder, rotate, to-images, images-to-pdf, text, ocr, protect, unlock, strip-metadata, info, watermark, number-pages, repair, check, linearize, pdfa, doctor) | built | 49 unit tests, `scripts/smoke.sh` 46-47 checks |
-| Agent mode: `--json` envelope, exit/error codes, `tools`, MCP server | built | tested with a scripted JSON-RPC client; **not** with Claude Desktop or Claude Code themselves |
-| Packages: macOS arm64 (needs macOS 14+), macOS Intel (macOS 15+), Linux x86_64 + arm64 (glibc 2.35+), Windows x64 (with OCR), Windows x86 (no OCR) | **all six built and smoke-tested in CI** | release dry run `38021880189` |
-| Desktop window (`pdfsqueeze ui`) | built, **verified on macOS only** | window list, menu bar, Quit, page loaded; see below |
-| Windows window (WebView2) | **compiles in CI** (run `38025082944`, all 5 jobs green on 2026-10-10); never run by a person | opening it on a real Windows machine is still untested |
-| Native drag-and-drop of files from Finder/Explorer | written, **not tested** | cannot drive a native drag from the dev environment |
-| `install.sh` on Linux, `install.ps1` on Windows | written, **never run** | the macOS path of `install.sh` was run |
-| Published release / version tag | **none** | the one-line install commands do not work until `v0.1.0` exists |
-| Code signing | none | macOS is ad-hoc signed; Windows unsigned (SmartScreen warning if downloaded in a browser) |
-
-The detailed per-item tables are in `ROADMAP.md` (kept current; it is the source of truth for
-"verified vs written").
+| 23 commands: compress, organize, merge, split, extract, delete, reorder, rotate, sign, to-images, images-to-pdf, text, ocr, protect, unlock, strip-metadata, info, watermark, number-pages, repair, check, linearize, pdfa, doctor | built | 53 unit tests and `scripts/smoke.sh` 53 checks on macOS; CI on macOS, Windows, Linux |
+| Agent mode: `--json`, exit and error codes, `tools`, MCP server | built | scripted JSON-RPC client; **not** a real MCP client |
+| Window UI: organize pages (select, turn, remove, drag), merge cards (thumbnails, drag, remove, add), sign (draw, type or image, place on a page), real progress bar, Save all, splash, tool groups | built | driven in a browser tab with scripted pointer events and measured outputs; macOS window launched and inspected. **Never driven by a hand.** |
+| macOS app `pdfsqueeze.app` (zipped) | built locally | unzipped copy passes smoke 53/53 with Homebrew hidden, launches with `open`, 1180x832 window, menu bar, clean quit. **Not built by CI yet; Intel not built; not run from a quarantined download.** |
+| Double-click launch (no args from the desktop opens the window) | built | unit-tested; works for the Mac app. **Windows and Linux: compiled in CI only.** |
+| Six packages (mac arm64/Intel, Linux x86_64/arm64, Windows x64/x86) | built and smoke-tested in CI **on 2026-10-10** (run `38021880189`) | **Predates the window, signing and the app. Must be re-run.** |
+| Windows window (WebView2) | compiles in CI (`38480625744`) | **never run by a person** |
+| Native file drag from Finder or Explorer onto the window | written | not tested |
+| `install.sh` (Linux), `install.ps1` (Windows) | written | **never run** (the macOS path of `install.sh` was run) |
+| Published release / tag | **none** | installers and download buttons do not work until `v0.1.0` exists |
+| Code signing | none | Mac ad-hoc only; Windows unsigned (SmartScreen warning). Free option: SignPath Foundation, not applied for |
+| Landing page | live | desktop, wide and phone widths checked in a browser tab; download buttons point at the Releases page (`RELEASE_READY=false`) |
+| Certificate (digital) signatures | **not built** | `sign` places a picture of a signature only |
 
 ## Resume in five minutes
 
 ```bash
 cd ~/Projects/pdfsqueeze
-git status -sb && git log --oneline | head          # where are we
-cargo test                                          # 49 tests, no engines needed
+git status -sb && git log --oneline origin/main..HEAD   # where are we, what is unpushed
+cargo test                                              # 53 tests, no engines needed
 cargo build --release
-./scripts/smoke.sh target/release/pdfsqueeze        # end to end (needs gs, qpdf, tesseract installed)
-./target/release/pdfsqueeze doctor                  # which engines it found
-./target/release/pdfsqueeze ui                      # the app window
+./scripts/smoke.sh target/release/pdfsqueeze            # needs gs, qpdf 11+, tesseract installed
+./target/release/pdfsqueeze doctor                      # which engines it found
+./target/release/pdfsqueeze ui                          # the app window
+bash scripts/package-macos-app.sh                       # -> dist/pdfsqueeze-macos-<arch>.app.zip
 ```
 
 Build-time engines on a Mac: `brew install ghostscript qpdf tesseract` (qpdf must be 11+).
-Toolchain: Rust 1.99 from Homebrew (no rustup, so no cross-compile targets locally; Windows and
-Linux are only testable in CI).
+Toolchain: Rust 1.99 from Homebrew (no rustup, so no cross-compile targets: Windows and Linux are
+only testable in CI). Python 3 with Pillow and numpy is used by `scripts/make-hero.py`.
 
-To test a package the way a user gets it (engines out of reach):
+Test the window without a person: `pdfsqueeze ui --no-open --port 47399` prints a URL with a token.
+Upload files with `curl -X POST -H "X-Token: <t>" --data-binary @file.pdf
+"http://127.0.0.1:47399/api/upload?name=file.pdf"`, open the URL in a browser pane and drive it with
+JavaScript. Add `&splash=hold` to keep the opening splash on screen.
 
-```bash
-./scripts/package-macos.sh      # -> dist/pdfsqueeze-macos-arm64.tar.gz (about 26 MB)
-# then run scripts/smoke.sh against the unpacked copy under `sandbox-exec` denying /opt/homebrew
-# with an empty environment (see ROADMAP "Phase 3.5")
-```
+## What to do next (each step needs the owner's go-ahead; see "Working rules")
+
+1. **Push** the 2 local commits (runs the free CI once, about 5 minutes).
+2. **Release dry run**: `gh workflow run release.yml` (manual dispatch, publishes nothing). It now
+   builds the six packages plus `pdfsqueeze-macos-<arch>.app.zip` for both Macs and smoke-tests
+   the app. Free on a public repo; budget 20 to 40 minutes; watch it and cancel past about twice
+   that. Fix whatever it finds (the app path has never run in CI).
+3. **Installers**: test `install.sh` on Linux and `install.ps1` on Windows (a CI job per OS, free).
+4. **Tag**: `git tag v0.1.0 && git push origin v0.1.0` publishes the files to a GitHub Release.
+5. **Page**: set `RELEASE_READY = true` near the bottom of `docs/index.html` and push (Pages
+   redeploys; GitHub caches about 10 minutes, so add a `?v=` query when checking).
+6. Then the backlog below.
 
 ## Where things are
 
 | Path | What it is |
 |---|---|
-| `src/main.rs` | Slim dispatcher: parse, then `ui`, `mcp` or `commands::execute` |
-| `src/cli.rs` | All clap definitions (global `--json`). The single source for CLI, schemas and MCP |
-| `src/commands.rs` | Every command returns a `Done` (human text, JSON, warnings, exit code). Error classification, JSON envelope |
-| `src/agent.rs` | Tool schemas generated from clap, MCP stdio server, folder allow-list (`PathPolicy`) |
-| `src/ui.rs`, `src/ui.html` | The app: local server (loopback, token, Host check), window module (wry + tao), macOS menu (muda), the whole page |
-| `src/engine.rs` | Finds and runs engines: bundled first, then PATH; `Os` parameter for testable Windows/Linux logic; qpdf version guard (needs 11+) |
-| `src/compress.rs`, `src/batch.rs` | Ghostscript compression (dpi + JPEG quality, monotonic target-size ladder); file/folder jobs |
-| `src/pages.rs`, `src/security.rs`, `src/stamp.rs`, `src/fix.rs`, `src/convert.rs`, `src/ocr.rs`, `src/imgpdf.rs`, `src/pdfout.rs` | Page ops and page geometry, passwords/metadata/info, watermark and numbering, check/repair/linearize/PDF-A, render and text via Ghostscript, OCR overlay, images to PDF, minimal PDF writer |
-| `scripts/smoke.sh` | 47 end-to-end checks; runs on any OS; `SMOKE_REQUIRE_BUNDLED=1`, `SMOKE_SKIP_OCR=1` |
-| `scripts/bundle-engines.sh`, `scripts/package-macos.sh` | macOS bundling (dylib relocation, ad-hoc signing) |
-| `scripts/bundle-engines-linux.sh`, `scripts/package-linux.sh` | Linux bundling (ldd + patchelf; glibc floor recorded) |
-| `scripts/stage-windows.ps1`, `scripts/bundle-tesseract-windows.sh` | Windows: official Ghostscript + qpdf unpacked with 7-Zip; MSYS2 only for Tesseract |
+| `src/main.rs` | Dispatcher: a bare desktop launch opens the window (`opens_window_on_launch`), else parse, then `ui`, `mcp` or `commands::execute`. Windows: `release_own_console` |
+| `src/cli.rs` | All clap definitions (global `--json`). Single source for CLI, schemas and MCP |
+| `src/commands.rs` | Every command returns a `Done` (text, JSON, warnings, exit code); error classification; JSON envelope |
+| `src/agent.rs` | Tool schemas from clap, MCP stdio server, folder allow-list (`PathPolicy`, `PATH_ARGS`) |
+| `src/ui.rs`, `src/ui.html` | The app: loopback server (per-run token, Host check; endpoints `/api/upload`, `files`, `run`, `progress`, `pages`, `pagethumb`, `pagepreview`, `thumb`, `download`, `save`, `save_all`, `reveal`, `open`, `remove`, `tools` and `/hero.jpg`), window (wry + tao), Mac menu (muda), the whole page in one HTML file |
+| `src/engine.rs` | Finds and runs engines: bundled first (`engines/`, `../engines`, `../Resources/engines` inside the .app), then PATH; `Os` parameter; qpdf 11+ guard; `run_lines` streams Ghostscript page lines |
+| `src/progress.rs` | Real progress of the running job, polled by the window |
+| `src/compress.rs`, `src/batch.rs` | Ghostscript compression (dpi, JPEG quality, monotonic target-size ladder); folder jobs |
+| `src/pages.rs` | Page ops: select, extract, delete, reorder, **organize**, merge, split, rotate; page geometry |
+| `src/stamp.rs` | Watermark, page numbers, **sign** (overlay PDF with a soft-masked image placed by percent) |
+| `src/security.rs`, `fix.rs`, `convert.rs`, `ocr.rs`, `imgpdf.rs`, `pdfout.rs` | Passwords, metadata and info; check, repair, linearize, PDF/A; render and text via Ghostscript; OCR overlay; images to PDF (incl. `load_rgba`); minimal PDF writer |
+| `scripts/smoke.sh` | 53 end-to-end checks, any OS; `SMOKE_REQUIRE_BUNDLED=1`, `SMOKE_SKIP_OCR=1` |
+| `scripts/bundle-engines.sh`, `package-macos.sh`, `package-macos-app.sh` | macOS bundling (dylib relocation, ad-hoc signing), tarball, and the `.app` |
+| `scripts/bundle-engines-linux.sh`, `package-linux.sh` | Linux (ldd + patchelf; glibc floor recorded) |
+| `scripts/stage-windows.ps1`, `bundle-tesseract-windows.sh` | Windows: official Ghostscript + qpdf unpacked with 7-Zip; MSYS2 only for Tesseract |
+| `scripts/make-hero.py`, `set-hero.py` | Generated licence-free artwork; prepare a photograph as the background |
+| `assets/` | `hero.jpg` (leaf photo, see CREDITS), `icon*.png`, `icon.ico` |
+| `docs/` | Landing page (`index.html`, `leaf.jpg`, `hero.jpg`, `img/`), served by Pages |
 | `install.sh`, `install.ps1` | One-line installers (no admin, no password) |
-| `.github/workflows/ci.yml`, `release.yml` | CI on every push; release builds by hand or on a `v*` tag |
-| `README.md`, `AGENTS.md`, `ROADMAP.md`, `CLAUDE.md` | Users, agents that call the tool, status tables, rules for working in the repo |
+| `.github/workflows/ci.yml`, `release.yml` | CI on every push; release by hand or on a `v*` tag |
 
 ## Decisions and why
 
-- **Bundle engines, do not rewrite them.** Pure-Rust replacements would be months of work.
-- **Three engines only.** Poppler was dropped: no current 32-bit Windows build, and Ghostscript
-  can render and extract text. Ghostscript (AGPL) forces the project to be AGPL-3.0.
-- **No Tauri CLI.** The window uses `wry` + `tao` (what Tauri is built on) inside the one
-  binary; the page is a single embedded HTML file served from loopback.
-- **Windows engines are official builds, unpacked.** MSYS2's Ghostscript has no `Resource`
-  folder (its init files are compiled in), and running the installer on a runner hung a job for
-  an hour. Tesseract comes from MSYS2 (no official portable build) in its own `engines/tesseract/`.
-- **Windows 32-bit ships without OCR.** Tesseract has had no 32-bit build since 5.3.1.
-- **Passwords never travel on a command line.** Hidden prompt, `--password-file`, or
-  `PDFSQUEEZE_PASSWORD`; they reach qpdf through stdin (`qpdf @-`).
-- **Agents get JSON and stable codes**, tool schemas are generated from the CLI so they cannot
-  drift, and the MCP server refuses to start without `--allow-dir` or `--allow-any-path`.
-- **Public repo** so CI is free and unlimited. Billing was checked read-only: Free plan, no
-  payment method, Actions budget $0 with "stop usage".
+- **Bundle engines, do not rewrite them.** Ghostscript is AGPL, so the project is AGPL-3.0.
+- **Three engines only.** Poppler dropped: no current 32-bit Windows build; Ghostscript renders and
+  extracts text.
+- **Window = wry + tao inside the one binary**, the page is one embedded HTML file on loopback; no Tauri CLI.
+- **Windows engines are official builds, unpacked.** Never run a GUI or silent installer on a
+  runner (it hung a job for an hour). Tesseract comes from MSYS2 in `engines/tesseract/`.
+- **Windows 32-bit ships without OCR** (no Tesseract 32-bit build since 5.3.1).
+- **Passwords never travel on a command line** (hidden prompt, `--password-file`, env var; qpdf `@-`).
+- **Agents get JSON and stable codes**; schemas are generated from the CLI; MCP needs `--allow-dir`.
+- **Public repo**, so CI and Pages are free. Private would take Pages offline, break the installers
+  (raw URLs) and downloads, and cap CI minutes. The owner chose to keep it public (2026-10-13).
+- **Signing is visual**, not certificate-based.
+- **The UI server never trusts paths from the page**: it builds them from registered uploads and
+  its own results folder; the signature picture is uploaded as `__signature.png` and hidden.
+- **The Mac download is a `.app`**; a bare launch from the desktop opens the window, from a
+  terminal it prints help; `PDFSQUEEZE_NO_GUI=1` forces help (agents, CI).
 
-## Backlog, in the order I would do it
-
-**Next, needs the owner's go-ahead**
-1. ~~Push the local commits~~ done 2026-10-10; CI green, Windows window code compiles.
-2. Owner reviews the real window (`pdfsqueeze ui`) and gives design feedback.
-3. Test `install.sh` (Linux) and `install.ps1` (Windows) in CI, then tag **`v0.1.0`**, which
-   publishes the six packages and makes the one-line install commands work.
+## Backlog
 
 **Soon**
-- Double-click launch: no arguments opens the window; Windows needs the GUI subsystem or
-  `FreeConsole` so no terminal appears. App icon, `.app` bundle, Windows installer.
-- Progress bar is real for compress (pages, attempts), OCR (checking, pages, assembling), to-images, text and batch compress (files); other commands are quick and show an animated bar with no percentage. Source: `src/progress.rs`, polled via `/api/progress`.
-- Tools are grouped under five icons (organize/merge/split/extract; compress/repair/check/linearize/pdfa; images/text/ocr; protect/unlock/metadata/info; watermark/numbers) in one workspace, and `organize` replaces the separate delete/reorder/rotate screens (the CLI commands remain). Check in the real window.
-- Sign: visual signature only (draw, type or image, placed on a page preview). Certificate-based digital signatures (PKCS#7) are **not** built; they would need a signing library and a way to hold a key.
-- **Landing page is live**: https://shivamhire025.github.io/pdfsqueeze/ (GitHub Pages, branch `main`, folder `/docs`, enabled 2026-10-13 with the owner's go-ahead). Edits to `docs/` go live on push. Source: `docs/index.html` (dark forest-green editorial style; uses `docs/leaf.jpg`, credited in the footer and `CREDITS.md`) (single file, no external requests, no tracking; photos are not used on it, only the generated artwork). To publish for free: repo Settings, Pages, deploy from branch `main`, folder `/docs`. Download buttons point at the Releases page until `RELEASE_READY` is set to `true` near the bottom of the file, which should be done once tag `v0.1.0` has published its files. Regenerate the hero with `python3 scripts/make-hero.py docs/hero.jpg`.
-- **Release packaging**: `release.yml` now also builds `pdfsqueeze-macos-<arch>.app.zip` (a double-click app) next to the tar.gz. Not yet run in CI (needs a dry run). Landing-page download buttons point at the `.app.zip` for macOS and the zip for Windows. Unverified: the Windows no-console behaviour (`release_own_console` in `src/main.rs`), and the Intel Mac app.
-- Native open and Save-As dialogs; reorder documents for merge (page reorder with real thumbnails and drag is done: verified in a browser with a synthetic mouse drag, **not** in the native window with a real hand); OCR progress in the window.
-- Verify native file drop and keyboard shortcuts on macOS and Windows with a person.
-- Test with real documents (scans, very large files, encrypted input, CJK).
-- Real MCP client test (Claude Desktop, Claude Code).
-- Free Windows code signing: apply to SignPath Foundation (repo is public and AGPL).
+- Run the window by hand on Mac and Windows: drag, draw a signature, Save all, drop files from Finder.
+- Native open and Save-As dialogs; finer OCR progress.
+- Windows exe icon (needs a resource compile step); a Linux `.desktop` file.
+- Test with real documents (scans, large files, encrypted, CJK). Real MCP client test.
+- Free Windows signing (SignPath Foundation); Mac notarization is paid and not planned.
+- Photographers' names in `CREDITS.md` (Magnific free licence needs attribution).
 - Linux window (needs webkit2gtk; today it opens the browser).
 
 **Later**
-- OCR languages beyond English; deskew and rotation detection; PDF/A validation with veraPDF.
-- Integration tests with fixture PDFs; batch for commands other than `compress`; parallel batch.
-- SPDX headers, CONTRIBUTING; Phase 5 items (Office conversion, redaction, forms, signing, compare).
+- OCR languages beyond English; deskew; PDF/A validation (veraPDF).
+- Integration tests with fixture PDFs; batch for more commands; parallel batch.
+- Certificate-based digital signatures; redaction, forms, compare, Office conversion.
 
 ## Gotchas learned the hard way
 
-- **qpdf must be 11 or newer** (JSON v2, `--update-from-json`). Ubuntu 22.04 ships 10.6, so the
-  Linux job builds a current qpdf from source. `engine::qpdf()` rejects older ones (`engine_too_old`).
-- **`cfg!()` keeps the code, `#[cfg]` removes it.** A `std::os::unix` use behind `if cfg!(unix)`
-  still has to compile on Windows. Use `#[cfg(unix)]`.
-- **Packages inherit the build OS floor.** The Intel package needs macOS 15 because GitHub's only
-  Intel runner is macOS 15; Linux needs the build runner's glibc.
-- **Never run a GUI or silent installer on a runner.** Unpack with 7-Zip.
+- **qpdf must be 11 or newer** (JSON v2). Ubuntu 22.04 ships 10.6, so the Linux job builds qpdf from
+  source; `engine::qpdf()` rejects older ones (`engine_too_old`).
+- **`cfg!()` keeps the code, `#[cfg]` removes it**; a unix-only API behind `cfg!(unix)` still has to
+  compile on Windows.
+- **Packages inherit the build OS floor** (the Intel Mac needs macOS 15, the only Intel runner;
+  Linux needs the runner's glibc). A package built locally says this Mac's version; ignore that.
 - **Every workflow job needs `timeout-minutes`**; workflows use `concurrency`.
-- **`wry`/`tao` create no menu.** Without `muda`'s menu there is no Cmd+Q, Cmd+C or Cmd+V on
-  macOS. A drag-drop handler that returns `true` swallows HTML5 drops (we want that: real paths).
-- **A native window cannot be screenshotted** without Screen Recording permission. Evidence
-  used instead: `CGWindowListCopyWindowInfo` (a 10-line Swift helper), System Events for the
-  menu bar and Quit, and `lsof` for the web view's connection to the local server.
-- **Ghostscript `-dSAFER` blocks file reads**; use `-dNOSAFER` only for test generators.
-- **The UI server never trusts paths from the page**: it strips path-like arguments and builds
-  them from registered files and its own results folder.
-- Shell notes for this machine: the default shell is zsh (no word splitting of unquoted
-  variables), macOS bash is 3.2, and there is no `timeout` command.
+- **`wry`/`tao` create no menu**; `muda` supplies Cmd+Q, Cmd+C, Cmd+V. A drag-drop handler that
+  returns `true` swallows HTML5 drops (we want real paths), so reordering uses pointer events.
+- **A drag can end before its last move event**: use the release position on pointerup.
+- **A native window cannot be screenshotted** without Screen Recording permission; use
+  `CGWindowListCopyWindowInfo` (a Swift one-liner), System Events (menu bar), `lsof`.
+- **Browser-pane test drags**: the drag tool's end coordinate is not scaled like the start one; use
+  scripted pointer events or a 1:1 viewport.
+- **Default `<button>` padding** pushes icons off-centre; set `padding: 0`.
+- **Pages cache** about 10 minutes; check the live site with a `?fresh=` query.
+- **The sandbox refuses `rm` on `$(...)` results**; print the path first, then remove the literal path.
+- **Ghostscript `-dSAFER` blocks file reads**; `-dNOSAFER` only for test generators.
+- Shell: zsh (no word splitting), macOS bash 3.2, no `timeout` command.
 
 ## Working rules for this project
 
-Standing rules are in the vault `CLAUDE.md` ("Standing rules", 2026-10-09) and this repo's
-`CLAUDE.md`. In short: say what a job consumes and wait for a yes; never spend or enable
-spending; every long job gets a timeout and is watched; check account facts before warning;
-remote side effects (push, trigger workflows, tag, publish, change repo settings) are confirmed
-each time; verify locally first and run remote jobs once; log notable runs and failures in the
-vault's `Wiki/log.md` the same session. Be explicit about what was run versus only written.
+Standing rules are in the owner's vault `CLAUDE.md` and this repo's `CLAUDE.md`. In short: say what
+a job consumes and wait for a yes; never spend or enable spending; every long job gets a timeout
+and is watched; check account facts before warning; **remote side effects (push, trigger a
+workflow, tag, publish, change repo settings) are confirmed each time**; verify locally first and
+run remote jobs once; log notable runs the same session in the project log; say what was run
+versus only written.
 
-## Cost and account facts (checked 2026-10-09)
+## Cost and account facts (checked 2026-10-09, still true 2026-10-13)
 
-GitHub Free plan, no payment method, Actions budget $0 with "stop usage". The repo is public,
-so standard runner minutes are free. Your own machine: Docker is installed but its daemon was
-not running; Rust is from Homebrew. The owner's commit email is public in history.
+GitHub Free plan, no payment method, Actions budget $0 with "stop usage". Public repo, so standard
+runner minutes and Pages are free. Do **not** click GitHub's "Enterprise trial" buttons. The
+owner's commit email is public in the history.
 
 ## Open questions for the owner
 
-- OK to push the local commits now (runs CI)?
-- Tag `v0.1.0` and publish once the Windows window compiles and the installers are tested?
-- Happy with the new design? What would they change?
-- Apply for SignPath Foundation signing, or ship Windows unsigned for now?
+- Push the 2 local commits and start the release dry run?
+- Apply for SignPath Foundation (free Windows signing), or ship Windows unsigned for now?
+- Wording of the first-launch notes (Gatekeeper, SmartScreen) on the page.
+- Add the photographers' names to `CREDITS.md`.
