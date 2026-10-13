@@ -9,8 +9,8 @@
      leaf-green accent, large light headlines and pill buttons. One look, light only. */
   :root {
     --bg: #eef4ec;
-    --rail: rgba(255, 255, 255, .52);
-    --surface: rgba(255, 255, 255, .66);
+    --rail: rgba(255, 255, 255, .62);
+    --surface: rgba(255, 255, 255, .80);
     --ink: #14251b;
     --muted: #4d6657;
     --faint: #7b9283;
@@ -25,7 +25,7 @@
     --warn-soft: rgba(242, 195, 91, .28);
     --bad: #b3261e;
     --bad-soft: rgba(179, 38, 30, .10);
-    --glass: rgba(255, 255, 255, .58);
+    --glass: rgba(255, 255, 255, .72);
     --shadow: 0 1px 2px rgba(20, 50, 30, .08), 0 14px 38px rgba(20, 50, 30, .12);
     --radius: 18px;
     --display: "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Roboto, system-ui, sans-serif;
@@ -284,7 +284,7 @@
   html { background: var(--bg); }
   body { background: transparent; }
   body::before { content: ""; position: fixed; inset: 0; z-index: -1; background:
-      linear-gradient(90deg, rgba(246, 250, 244, .90) 0%, rgba(246, 250, 244, .66) 40%, rgba(246, 250, 244, .24) 100%),
+      linear-gradient(90deg, rgba(246, 250, 244, .94) 0%, rgba(246, 250, 244, .78) 40%, rgba(246, 250, 244, .50) 100%),
       var(--hero, none) center / cover no-repeat; }
   .app { margin: 14px; height: calc(100% - 28px); border: 1px solid rgba(60, 130, 70, .38); border-radius: 28px; overflow: hidden; background: rgba(255, 255, 255, .20); }
   .rail { background: var(--rail); -webkit-backdrop-filter: blur(22px) saturate(1.15); backdrop-filter: blur(22px) saturate(1.15); border-right: 1px solid var(--line); }
