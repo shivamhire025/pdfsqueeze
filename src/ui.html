@@ -249,6 +249,18 @@
   .veil div { background: var(--surface); border: 2px dashed var(--accent); border-radius: 22px; padding: 38px 54px; font-size: 22px; font-weight: 700; box-shadow: var(--shadow); }
   .hidden { display: none !important; }
 
+  .ucards { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; }
+  .ucard { border: 1px solid var(--line); background: rgba(255, 238, 222, .05); border-radius: 16px; padding: 10px; display: grid; gap: 4px; min-width: 0; }
+  .uframe { position: relative; aspect-ratio: 3 / 4; border-radius: 9px; background: rgba(0, 0, 0, .35); border: 1px solid var(--line); display: grid; place-items: center; overflow: hidden; color: var(--faint); }
+  .uframe img { width: 100%; height: 100%; object-fit: contain; object-position: top; display: block; }
+  .unum { position: absolute; top: 7px; left: 7px; min-width: 26px; height: 26px; border-radius: 99px; background: var(--accent); color: var(--accent-ink); font-weight: 700; display: grid; place-items: center; padding: 0 7px; font-variant-numeric: tabular-nums; }
+  .uname { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 4px; }
+  .umeta { color: var(--muted); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+  .umove { display: flex; justify-content: center; gap: 4px; margin-top: 4px; }
+  .ib.sm { width: 32px; height: 32px; border-color: var(--line); }
+  .ib.sm svg.i { width: 17px; height: 17px; }
+  svg.i.flip { transform: scaleX(-1); }
+
   /* ---- cinematic layer: hero image, frame, glass, type ---- */
   html { background: var(--bg); }
   body { background: transparent; }
@@ -400,6 +412,14 @@ const PLACEHOLDER = { target_size: "for example 2MB or 500KB", pages: "for examp
 
 let tools = [], files = [], selected = new Set(), cat = "shrink", current = null, preset = "recommended";
 let result = null, running = false, saved = {};
+let mergeOrder = []; // ids in the order documents will be joined (merge) or processed
+function orderedChosen() {
+  const have = new Set(files.filter((f) => selected.has(f.id)).map((f) => f.id));
+  const out = mergeOrder.filter((id) => have.has(id));
+  for (const f of files) if (have.has(f.id) && !out.includes(f.id)) out.push(f.id);
+  mergeOrder = out;
+  return out.map((id) => files.find((f) => f.id === id));
+}
 let active = null; // the document single-file tools work on: the one picked last in the list
 function activeId() {
   const has = (id) => files.some((f) => f.id === id);
@@ -562,9 +582,23 @@ function renderTask(v) {
     if (!files.length) {
       html += `<div class="field"><div class="lbl">Files</div><div class="hint">Add a file first, using Add files on the left.</div></div>`;
     } else if (multi) {
-      html += `<div class="field"><span class="lbl">Using</span><div class="using">${
-        chosen.length ? chosen.map((f) => `<span class="chip">${ico("doc", "i")} ${esc(f.name)}</span>`).join("") : '<span class="hint">Pick documents on the left.</span>'}</div>
-        ${current.name === "merge" ? '<div class="hint">Joined in the order they appear on the left.</div>' : ""}</div>`;
+      const list = orderedChosen();
+      const isMerge = current.name === "merge";
+      const pages = list.reduce((n, f) => n + (f.pages || 0), 0);
+      const cards = list.map((f, i) => `<div class="ucard" data-uid="${esc(f.id)}">
+          <div class="uframe">${f.kind === "pdf" || f.kind === "image"
+            ? `<img alt="" src="/api/thumb?id=${encodeURIComponent(f.id)}&t=${encodeURIComponent(TOKEN)}">` : ico("doc")}
+            ${isMerge ? `<span class="unum">${i + 1}</span>` : ""}</div>
+          <div class="uname" title="${esc(f.name)}">${esc(f.name)}</div>
+          <div class="umeta">${esc([f.pages ? plural(f.pages, "page") : null, human(f.size)].filter(Boolean).join(" · "))}</div>
+          ${isMerge && list.length > 1 ? `<div class="umove">
+            <button class="ib sm" type="button" data-mv="-1" data-id="${esc(f.id)}" ${i === 0 ? "disabled" : ""} title="Move earlier" aria-label="Move ${esc(f.name)} earlier"><svg class="i flip"><use href="#i-arrow"/></svg></button>
+            <button class="ib sm" type="button" data-mv="1" data-id="${esc(f.id)}" ${i === list.length - 1 ? "disabled" : ""} title="Move later" aria-label="Move ${esc(f.name)} later"><svg class="i"><use href="#i-arrow"/></svg></button>
+          </div>` : ""}
+        </div>`).join("");
+      html += `<div class="field"><span class="lbl">${isMerge ? "Joined in this order" : "Using"}</span>
+        ${list.length ? `<div class="ucards">${cards}</div>` : '<div class="hint">Pick documents in the list on the left.</div>'}
+        ${isMerge && list.length > 1 ? `<div class="hint">Result: ${plural(pages, "page")} from ${list.length} documents. Pick or unpick documents in the list on the left.</div>` : ""}</div>`;
     } else {
       // One document: the list on the left already says which. Only mention it when there is a choice.
       const doc = files.find((f) => f.id === activeId());
@@ -626,6 +660,13 @@ function fieldHtml(key, p, required) {
 }
 
 $("view").addEventListener("click", (e) => {
+  const mv = e.target.closest("[data-mv]");
+  if (mv) {
+    const id = mv.dataset.id, d = Number(mv.dataset.mv);
+    const list = orderedChosen().map((f) => f.id), i = list.indexOf(id), j = i + d;
+    if (i >= 0 && j >= 0 && j < list.length) { [list[i], list[j]] = [list[j], list[i]]; mergeOrder = list; render(); }
+    return;
+  }
   const c = e.target.closest("[data-cat]");
   if (c) {
     if (running) return;
@@ -898,7 +939,7 @@ async function run() {
   const fileMap = {};
   if (fk) {
     let ids;
-    if (multi) ids = files.filter((f) => selected.has(f.id)).map((f) => f.id);
+    if (multi) ids = orderedChosen().map((f) => f.id);
     else { const id = activeId(); ids = id ? [id] : []; }
     if (!ids.length) { result = { env: { ok: false, error: { code: "usage", message: "Add a document first, then try again." } } }; renderResult(); return; }
     fileMap[fk] = ids;
