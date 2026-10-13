@@ -162,3 +162,7 @@ AGPL-3.0-or-later, see [LICENSE](LICENSE). Ghostscript is AGPL, so this project 
 
 See [HANDOFF.md](HANDOFF.md) for current status, architecture, backlog and known gotchas, and
 [ROADMAP.md](ROADMAP.md) for what is verified versus only written.
+
+## Credits
+
+Background photographs courtesy of Magnific's free photos, used under their free licence; see [CREDITS.md](CREDITS.md).
