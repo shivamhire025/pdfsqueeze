@@ -6,6 +6,9 @@ Plain-language record of what pdfsqueeze can do and how well that has been check
 ## Unreleased (work since the 2026-10-10 CI run; not yet on GitHub)
 
 ### Added
+- **Save all for many results**: PDF to images and Split now show a small preview strip and one
+  "Save all N images" button that puts everything into a single new folder in Downloads
+  (never overwriting), then "Open folder". The per-file buttons are gone for multi-file results.
 - **Opening splash**: on launch the window shows a close-up leaf photograph at full strength with
   a white logo and the tagline in the centre for a moment, then fades into the app (click or
   press a key to skip). The same photograph, softened, is the background behind the app.

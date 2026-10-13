@@ -407,6 +407,11 @@
   .sheet:has(.pg-bar), .sheet:has(.ucards):not(:has(input)):not(:has(select)):not(:has(.presets)) { background: transparent; border: 0; padding: 0; }
   .sheet:has(.pg-bar) .runrow, .sheet:has(.ucards):not(:has(input)):not(:has(.presets)) .runrow { margin-top: 14px; }
 
+  /* ---- many results: preview strip ---- */
+  .strip { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; align-items: center; }
+  .strip img { height: 76px; width: auto; max-width: 110px; object-fit: cover; border-radius: 6px; border: 1px solid var(--line); background: #fff; }
+  .strip .more { font-weight: 600; color: var(--muted); padding: 0 6px; }
+
   /* ---- sign ---- */
   .signer { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); gap: 22px; align-items: start; }
   @media (max-width: 900px) { .signer { grid-template-columns: 1fr; } }
@@ -848,6 +853,7 @@ $("view").addEventListener("click", (e) => {
   const p = e.target.closest("[data-preset]");
   if (p) { preset = p.dataset.preset; document.querySelectorAll("[data-preset]").forEach((b) => b.setAttribute("aria-pressed", String(b === p))); return; }
   if (e.target.closest("#run")) { run(); return; }
+  if (e.target.closest("[data-save-all]")) { saveAll(); return; }
   const s = e.target.closest("[data-save]");
   if (s) { saveFile(s.dataset.save); return; }
   const r = e.target.closest("[data-reveal]");
@@ -1441,6 +1447,35 @@ function saveRow(d) {
       <button class="btn" type="button" data-open="${esc(s.path)}">Open</button>`;
   return `<button class="btn good" type="button" data-save="${esc(d.rel)}">Save ${esc(d.name)} <span style="opacity:.85">${human(d.size)}</span></button>`;
 }
+// Many results (pages as images, split parts): previews, then one button for all of them.
+function saveAllBlock(dls, command) {
+  const total = dls.reduce((n, d) => n + (d.size || 0), 0);
+  const isImg = (d) => /\.(png|jpe?g|webp)$/i.test(d.name);
+  const shown = dls.filter(isImg).slice(0, 12);
+  const strip = shown.length
+    ? `<div class="strip">${shown.map((d) => `<img alt="${esc(d.name)}" title="${esc(d.name)}" src="/api/download?rel=${encodeURIComponent(d.rel)}&t=${encodeURIComponent(TOKEN)}">`).join("")}${
+        dls.length > shown.length ? `<span class="more">+${dls.length - shown.length}</span>` : ""}</div>` : "";
+  const done = saved.__all;
+  const label = isImg(dls[0]) ? plural(dls.length, "image") : plural(dls.length, "file");
+  if (done) {
+    return `${strip}<div class="actions" style="margin-top:14px"><span class="saved">${ico("ok")} Saved ${esc(label)} to Downloads</span>
+      <button class="btn" type="button" data-open="${esc(done.folder)}">${ico("folder")} Open folder</button></div>
+      <div class="hint" style="margin-top:8px">${esc(done.folder)}</div>`;
+  }
+  return `${strip}<div class="actions" style="margin-top:14px"><button class="btn good" type="button" data-save-all>Save all ${esc(label)} <span style="opacity:.85">${human(total)}</span></button></div>`;
+}
+function folderNameFor(dls, command) {
+  const base = dls[0].name.replace(/\.[^.]+$/, "").replace(/-part-\d+$/, "").replace(/-\d+$/, "").replace(/^__+/, "") || "results";
+  const suffix = /^to[-_]images$/.test(command) ? "images" : command === "split" ? "parts" : "results";
+  return `${base}-${suffix}`;
+}
+async function saveAll() {
+  const dls = (result && result.downloads) || [];
+  if (dls.length < 2) return;
+  const j = await post("/api/save_all", { rels: dls.map((d) => d.rel), folder: folderNameFor(dls, result.env.command) });
+  if (j.ok) { saved.__all = { folder: j.folder, count: j.count }; renderResult(); }
+  else { result = { env: { ok: false, error: j.error } }; renderResult(); }
+}
 function renderResult() {
   const box = document.getElementById("result");
   if (!box || !result) return;
@@ -1485,7 +1520,8 @@ function renderResult() {
   const warns = (env.warnings || []).map((w) => `<div class="note">${esc(w)}</div>`).join("");
   const klass = partial ? "warn" : "good";
   const title = partial ? "Finished, with problems" : "Done";
-  const actions = dls.length ? `<div class="actions" style="margin-top:16px">${dls.map(saveRow).join("")}</div>` : "";
+  const actions = dls.length > 1 ? saveAllBlock(dls, env.command)
+    : dls.length ? `<div class="actions" style="margin-top:16px">${dls.map(saveRow).join("")}</div>` : "";
   box.innerHTML = `<div class="banner ${klass}"><h2>${ico(partial ? "warn" : "ok")} ${title}</h2>${body}${actions}${warns}</div>`;
   // animate the bars from zero on the next frame
   requestAnimationFrame(() => requestAnimationFrame(() => box.querySelectorAll(".fill[data-w]").forEach((el) => { el.style.width = el.dataset.w + "%"; })));

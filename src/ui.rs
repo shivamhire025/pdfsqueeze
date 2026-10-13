@@ -529,6 +529,61 @@ fn handle(state: &State, mut req: Request) {
             }
         }
 
+        // Several results at once: one new folder in Downloads, never overwriting anything.
+        (Method::Post, "/api/save_all") => {
+            let mut body = String::new();
+            let _ = req.as_reader().take(MAX_JSON).read_to_string(&mut body);
+            let v: Value = serde_json::from_str(&body).unwrap_or(Value::Null);
+            let rels: Vec<String> = v["rels"]
+                .as_array()
+                .map(|a| a.iter().filter_map(|x| x.as_str().map(String::from)).collect())
+                .unwrap_or_default();
+            if rels.is_empty() || rels.len() > 5000 {
+                return respond_error(req, 400, "usage", "nothing to save");
+            }
+            let Ok(session) = state.session.canonicalize() else {
+                return respond_error(req, 500, "error", "session folder is missing");
+            };
+            let mut sources: Vec<PathBuf> = Vec::new();
+            for rel in &rels {
+                match state.session.join(rel).canonicalize() {
+                    Ok(f) if f.starts_with(&session) && f.is_file() => sources.push(f),
+                    _ => return respond_error(req, 404, "input_not_found", "no such result"),
+                }
+            }
+            // A folder name from the page is only a suggestion: keep it to one safe path segment.
+            let wanted: String = v["folder"]
+                .as_str()
+                .unwrap_or("pdfsqueeze results")
+                .chars()
+                .map(|c| if c.is_alphanumeric() || " ._-()".contains(c) { c } else { '_' })
+                .collect::<String>()
+                .trim()
+                .trim_matches('.')
+                .chars()
+                .take(80)
+                .collect();
+            let wanted = if wanted.is_empty() { "pdfsqueeze results".to_string() } else { wanted };
+            let dest = unique_path(&downloads_dir(), &wanted);
+            if let Err(e) = std::fs::create_dir_all(&dest) {
+                return respond_error(req, 500, "error", &format!("could not create the folder: {e}"));
+            }
+            for src in &sources {
+                let name = src.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| "file".into());
+                let target = unique_path(&dest, &name);
+                if let Err(e) = std::fs::copy(src, &target) {
+                    return respond_error(req, 500, "error", &format!("could not save {name}: {e}"));
+                }
+                state.saved.lock().unwrap().insert(target);
+            }
+            state.saved.lock().unwrap().insert(dest.clone());
+            respond_json(
+                req,
+                200,
+                &json!({ "ok": true, "folder": dest.to_string_lossy(), "count": sources.len() }),
+            );
+        }
+
         (Method::Post, "/api/reveal") | (Method::Post, "/api/open") => {
             let mut body = String::new();
             let _ = req.as_reader().take(MAX_JSON).read_to_string(&mut body);
