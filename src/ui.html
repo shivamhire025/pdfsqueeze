@@ -260,6 +260,12 @@
   .ib.sm { width: 32px; height: 32px; border-color: var(--line); }
   .ib.sm svg.i { width: 17px; height: 17px; }
   svg.i.flip { transform: scaleX(-1); }
+  .ucard { grid-template-columns: minmax(0, 1fr); }
+  .ucard.add { display: grid; justify-items: stretch; align-content: start; width: 100%; cursor: pointer; background: transparent; border: 1px dashed var(--line); color: var(--muted); text-align: left; font: inherit; }
+  .ucard.add .uframe { width: 100%; background: rgba(255, 238, 222, .04); border: 1px dashed var(--line); }
+  .ucard.add .uframe svg.i { width: 38px; height: 38px; stroke-width: 1.4; }
+  .ucard.add .uname { color: var(--ink); }
+  .ucard.add:hover, .ucard.add:focus-visible { border-color: var(--accent); color: var(--accent); outline: none; background: var(--accent-soft); }
 
   /* ---- cinematic layer: hero image, frame, glass, type ---- */
   html { background: var(--bg); }
@@ -596,8 +602,14 @@ function renderTask(v) {
             <button class="ib sm" type="button" data-mv="1" data-id="${esc(f.id)}" ${i === list.length - 1 ? "disabled" : ""} title="Move later" aria-label="Move ${esc(f.name)} later"><svg class="i"><use href="#i-arrow"/></svg></button>
           </div>` : ""}
         </div>`).join("");
+      // Same size as a document card, in the glass style: opens the file picker.
+      const addCard = `<button class="ucard add" type="button" data-choose aria-label="Add another PDF">
+          <div class="uframe"><svg class="i"><use href="#i-plus"/></svg></div>
+          <div class="uname">Add a PDF</div><div class="umeta">${isMerge ? "Joined at the end" : "From this computer"}</div>
+          ${isMerge && list.length > 1 ? '<div class="umove" aria-hidden="true"><span class="ib sm" style="visibility:hidden"></span></div>' : ""}
+        </button>`;
       html += `<div class="field"><span class="lbl">${isMerge ? "Joined in this order" : "Using"}</span>
-        ${list.length ? `<div class="ucards">${cards}</div>` : '<div class="hint">Pick documents in the list on the left.</div>'}
+        <div class="ucards">${cards}${addCard}</div>
         ${isMerge && list.length > 1 ? `<div class="hint">Result: ${plural(pages, "page")} from ${list.length} documents. Pick or unpick documents in the list on the left.</div>` : ""}</div>`;
     } else {
       // One document: the list on the left already says which. Only mention it when there is a choice.
