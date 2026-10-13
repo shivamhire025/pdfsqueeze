@@ -223,6 +223,85 @@ pub fn reorder(input: &Path, order: &str, output: &Path) -> Result<()> {
     select(input, &pages, output)
 }
 
+/// Rotations as `page:angle` pairs, e.g. `1:90,3:180`. Page numbers are those
+/// of the original document; angles are clockwise and added to any rotation
+/// the page already has.
+pub fn parse_rotations(spec: &str, total: u32) -> Result<Vec<(u32, u32)>> {
+    let mut out: Vec<(u32, u32)> = Vec::new();
+    for token in spec.split(',').map(str::trim).filter(|t| !t.is_empty()) {
+        let (page, angle) = token
+            .split_once(':')
+            .with_context(|| format!("`{token}` is not page:angle (for example 3:90)"))?;
+        let page = page_num(page, total)?;
+        let angle: u32 = angle
+            .trim()
+            .parse()
+            .with_context(|| format!("invalid angle `{angle}`"))?;
+        if ![90, 180, 270].contains(&angle) {
+            bail!("angle for page {page} must be 90, 180 or 270");
+        }
+        out.push((page, angle));
+    }
+    Ok(out)
+}
+
+/// Keep `order` (original page numbers, in their new order; leave a page out to
+/// delete it) and rotate pages as given, in a single pass.
+pub fn organize(
+    input: &Path,
+    order: &str,
+    rotations: &[(u32, u32)],
+    output: &Path,
+) -> Result<OrganizeReport> {
+    ensure_distinct(input, output)?;
+    let total = page_count(input)?;
+    let pages = parse_page_spec(order, total)?;
+    // Rotation is by original page number, applied wherever that page ends up.
+    let mut by_angle: std::collections::BTreeMap<u32, Vec<u32>> = std::collections::BTreeMap::new();
+    let mut rotated = 0u32;
+    for (page, angle) in rotations {
+        let positions: Vec<u32> = pages
+            .iter()
+            .enumerate()
+            .filter(|(_, p)| *p == page)
+            .map(|(i, _)| i as u32 + 1)
+            .collect();
+        if !positions.is_empty() {
+            rotated += 1;
+        }
+        by_angle.entry(*angle).or_default().extend(positions);
+    }
+    let mut args: Vec<OsString> = vec![
+        input.into(),
+        "--pages".into(),
+        ".".into(),
+        page_list(&pages).into(),
+        "--".into(),
+    ];
+    for (angle, positions) in &by_angle {
+        if !positions.is_empty() {
+            args.push(format!("--rotate=+{angle}:{}", page_list(positions)).into());
+        }
+    }
+    args.push(output.into());
+    engine::run(&qpdf()?, &args)?;
+    Ok(OrganizeReport {
+        original_pages: total,
+        pages_kept: pages.len() as u32,
+        pages_removed: total.saturating_sub(
+            pages.iter().collect::<std::collections::BTreeSet<_>>().len() as u32,
+        ),
+        pages_rotated: rotated,
+    })
+}
+
+pub struct OrganizeReport {
+    pub original_pages: u32,
+    pub pages_kept: u32,
+    pub pages_removed: u32,
+    pub pages_rotated: u32,
+}
+
 pub fn merge(inputs: &[PathBuf], output: &Path) -> Result<()> {
     if inputs.len() < 2 {
         bail!("give at least two PDFs to merge");
@@ -301,6 +380,15 @@ pub fn rotate(input: &Path, angle: u32, spec: Option<&str>, output: &Path) -> Re
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn rotation_specs() {
+        assert_eq!(parse_rotations("1:90,3:180", 5).unwrap(), vec![(1, 90), (3, 180)]);
+        assert_eq!(parse_rotations("z:270", 5).unwrap(), vec![(5, 270)]);
+        assert!(parse_rotations("1:45", 5).is_err());
+        assert!(parse_rotations("9:90", 5).is_err());
+        assert!(parse_rotations("1", 5).is_err());
+    }
 
     #[test]
     fn specs() {

@@ -119,6 +119,7 @@ pdfsqueeze extract book.pdf 1-3,z -o excerpt.pdf     # z = last page
 pdfsqueeze delete book.pdf 2,5-7
 pdfsqueeze reorder book.pdf 3,1,2
 pdfsqueeze rotate scan.pdf 90 --pages 1-2
+pdfsqueeze organize book.pdf --order 3,1,2 --rotate 1:90   # reorder, turn and drop pages in one pass
 
 # convert
 pdfsqueeze to-images report.pdf --dpi 150 --format jpg

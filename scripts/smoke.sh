@@ -69,6 +69,10 @@ run "extract" 0 -- extract three.pdf 1,z -o ex.pdf
 run "delete" 0 -- delete three.pdf 2 -o del.pdf
 run "reorder" 0 -- reorder three.pdf 3,1,2 -o re.pdf
 run "rotate" 0 -- rotate three.pdf 90 --pages 1 -o rot.pdf
+run "organize (reorder + rotate + delete)" 0 -- --json organize three.pdf --order 3,1 --rotate 1:90 -o org.pdf
+has "organize reports pages" '"pages_kept": 2'
+run "organize refuses an angle that is not 90/180/270" 1 -- --json organize three.pdf --order 1 --rotate 1:45 -o bad.pdf
+has "organize bad angle is invalid_argument" '"code": "invalid_argument"'
 run "linearize" 0 -- linearize three.pdf -o lin.pdf
 run "check" 0 -- check three.pdf
 

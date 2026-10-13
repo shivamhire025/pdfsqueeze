@@ -172,8 +172,10 @@ could not get that small; this is the smallest result.
 
 **Combine and clean up**
 
-`merge` (two or more inputs, in order), then `delete`, `reorder` or `rotate` using 1-based
-page specs such as `1-3,7,z` where `z` is the last page.
+`merge` (two or more inputs, in order), then `organize` to reorder, rotate and delete pages in
+one pass (`order` lists the pages to keep in their new order; `rotate` is `page:angle` pairs such
+as `1:90,3:180` using original page numbers). `delete`, `reorder` and `rotate` do one job each.
+Page specs are 1-based, such as `1-3,7,z` where `z` is the last page.
 
 ## Limits worth knowing
 

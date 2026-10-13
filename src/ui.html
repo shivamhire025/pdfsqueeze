@@ -218,6 +218,19 @@
   .pg.moved { border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); background: var(--accent-soft); }
   .pg.moved .was { color: var(--accent); font-weight: 600; }
   .pg-ghost { position: fixed; z-index: 30; pointer-events: none; margin: 0; transform: rotate(2.5deg); box-shadow: var(--shadow); cursor: grabbing; opacity: .96; }
+  .pg-bar .pg-sum { font-weight: 650; margin-right: auto; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .pg .tools { display: flex; justify-content: center; gap: 4px; }
+  .pg .tb { width: 30px; height: 30px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); cursor: pointer; display: grid; place-items: center; padding: 0; }
+  .pg .tb svg.i { width: 17px; height: 17px; }
+  .pg .tb:hover, .pg .tb:focus-visible { color: var(--accent); border-color: var(--accent); outline: none; }
+  .pg .tb.del:hover { color: var(--bad); border-color: var(--bad); background: var(--bad-soft); }
+  .pg .tb.del.restore { color: var(--good); border-color: var(--good); }
+  .pg .frame img { transition: transform .18s ease; }
+  .pg .gone { display: none; position: absolute; top: 40%; left: 0; right: 0; text-align: center; font-weight: 700; color: var(--bad); text-shadow: 0 0 6px var(--bg); pointer-events: none; }
+  .pg.deleted { border-style: dashed; background: var(--bad-soft); }
+  .pg.deleted .frame { opacity: .35; filter: grayscale(1); }
+  .pg.deleted .gone { display: block; }
+  .pg.deleted .pos { color: var(--faint); }
   .pg-loading { color: var(--muted); padding: 18px 2px; }
 
   .veil { position: fixed; inset: 0; background: color-mix(in srgb, var(--accent) 16%, transparent); backdrop-filter: blur(3px); display: none; place-items: center; z-index: 10; pointer-events: none; }
@@ -238,6 +251,7 @@
     <symbol id="i-split" viewBox="0 0 24 24"><path d="M12 3v18"/><rect x="3" y="5" width="6" height="14" rx="1.5"/><rect x="15" y="5" width="6" height="14" rx="1.5"/></symbol>
     <symbol id="i-extract" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 14h6M12 11l3 3-3 3"/></symbol>
     <symbol id="i-delete" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></symbol>
+    <symbol id="i-organize" viewBox="0 0 24 24"><rect x="3" y="4" width="7" height="9" rx="1.5"/><rect x="14" y="4" width="7" height="9" rx="1.5"/><path d="M6.5 17v3M17.5 17v3M4 20h5M15 20h5"/></symbol>
     <symbol id="i-reorder" viewBox="0 0 24 24"><path d="M8 4v16M8 4 5 7M8 4l3 3M16 20V4M16 20l-3-3M16 20l3-3"/></symbol>
     <symbol id="i-rotate" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></symbol>
     <symbol id="i-to_images" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="m21 16-5-5-9 9"/></symbol>
@@ -278,17 +292,18 @@
 <script>
 "use strict";
 const TOKEN = new URLSearchParams(location.search).get("t") || "";
+const GRID_TOOL = "organize";
 
 const CATS = [
   { id: "shrink", label: "Shrink and fix", tools: ["compress", "repair", "check", "linearize", "pdfa"] },
-  { id: "pages", label: "Pages", tools: ["merge", "split", "extract", "delete", "reorder", "rotate"] },
+  { id: "pages", label: "Pages", tools: ["organize", "merge", "split", "extract"] },
   { id: "convert", label: "Convert", tools: ["to_images", "images_to_pdf", "text", "ocr"] },
   { id: "secure", label: "Protect and clean", tools: ["protect", "unlock", "strip_metadata", "info"] },
   { id: "stamp", label: "Stamp", tools: ["watermark", "number_pages"] },
 ];
 const TITLE = {
   compress: "Compress", repair: "Repair", check: "Check for problems", linearize: "Fast web view", pdfa: "Archive as PDF/A",
-  merge: "Merge", split: "Split", extract: "Extract pages", delete: "Delete pages", reorder: "Reorder pages", rotate: "Rotate pages",
+  merge: "Merge", split: "Split", extract: "Extract pages", organize: "Organize pages", delete: "Delete pages", reorder: "Reorder pages", rotate: "Rotate pages",
   to_images: "PDF to images", images_to_pdf: "Images to PDF", text: "Extract text", ocr: "Make searchable",
   protect: "Add a password", unlock: "Remove a password", strip_metadata: "Remove metadata", info: "Inspect",
   watermark: "Add a watermark", number_pages: "Number the pages", doctor: "Check setup",
@@ -297,7 +312,7 @@ const BLURB = {
   compress: "Make a file smaller, or fit a size limit.", repair: "Rebuild a damaged PDF.", check: "Look for structural problems.",
   linearize: "Let it start showing before it finishes downloading.", pdfa: "Convert for long-term storage.",
   merge: "Join several PDFs into one.", split: "Break a PDF into parts.", extract: "Keep only the pages you pick.", delete: "Remove pages you do not need.",
-  reorder: "Put pages in a new order.", rotate: "Turn pages clockwise.",
+  organize: "Reorder, rotate and delete pages.", reorder: "Put pages in a new order.", rotate: "Turn pages clockwise.",
   to_images: "Save every page as a picture.", images_to_pdf: "Combine pictures into one PDF.", text: "Pull the words out of a PDF.",
   ocr: "Turn scans into text you can search and copy.",
   protect: "Lock it with strong encryption.", unlock: "Take a password off.", strip_metadata: "Remove author, title and edit history.",
@@ -470,7 +485,7 @@ function renderTask(v) {
       `<button type="button" class="preset" data-preset="${v2}" aria-pressed="${preset === v2}"><span class="bars">${b.map((h) => `<i style="height:${h}px"></i>`).join("")}</span><b>${t}</b><small>${d}</small></button>`).join("")}</div></div>`;
   }
 
-  const skip = (k) => HIDDEN.has(k) || FILE_ARGS.has(k) || k === "level" || k === "password_file" || (current.name === "reorder" && k === "order");
+  const skip = (k) => HIDDEN.has(k) || FILE_ARGS.has(k) || k === "level" || k === "password_file" || (current.name === GRID_TOOL && (k === "order" || k === "rotate"));
   const keys = Object.keys(props).filter((k) => !skip(k));
   const primary = PRIMARY[current.name] || [];
   const main = keys.filter((k) => required.has(k) || primary.includes(k));
@@ -479,12 +494,15 @@ function renderTask(v) {
     html += `<div class="field"><label for="f_password">Password</label><input id="f_password" type="password" autocomplete="new-password">
       <div class="hint">${current.name === "unlock" ? "Leave blank if the file only has editing restrictions." : "Keep it somewhere safe: it cannot be recovered."}</div></div>`;
   }
-  if (current.name === "reorder") {
+  if (current.name === GRID_TOOL) {
     html += `<div class="field"><span class="lbl">Pages</span>
-      <div class="hint" style="margin:0 0 10px">Drag a page to a new spot. With the keyboard, focus a page and use the arrow keys. Previews are of your actual pages.</div>
+      <div class="hint" style="margin:0 0 10px">Drag a page to move it. Use the buttons on a page to turn or remove it. Previews are your actual pages.</div>
       <div class="pg-bar" id="pgbar" hidden>
+        <span class="pg-sum" id="pgsum"></span>
+        <button class="btn" type="button" id="pg-left">Turn all left</button>
+        <button class="btn" type="button" id="pg-right">Turn all right</button>
         <button class="btn" type="button" id="pg-reverse">Reverse order</button>
-        <button class="btn" type="button" id="pg-reset">Reset</button></div>
+        <button class="btn" type="button" id="pg-reset">Undo all changes</button></div>
       <div id="pagearea"><div class="pg-loading">Loading page previews…</div></div></div>`;
   }
   html += main.map((k) => fieldHtml(k, props[k], required.has(k))).join("");
@@ -495,7 +513,7 @@ function renderTask(v) {
   v.innerHTML = html;
   if (result) renderResult();
   document.querySelector("main").scrollTop = 0;
-  if (current.name === "reorder") initPages();
+  if (current.name === GRID_TOOL) initPages();
 }
 
 function fieldHtml(key, p, required) {
@@ -529,12 +547,13 @@ $("view").addEventListener("click", (e) => {
 window.addEventListener("keydown", (e) => { if (e.key === "Escape" && current && !running) { current = null; result = null; saved = {}; render(); } });
 
 function openTool(name) {
-  current = tools.find((t) => t.name === name); result = null; saved = {}; preset = "recommended"; pg = { id: null, count: 0, order: [], status: "idle", nodes: new Map() }; render();
+  current = tools.find((t) => t.name === name); result = null; saved = {}; preset = "recommended"; pg = newPg(null); render();
 }
 
 
 /* ---------- reorder: draggable page previews ---------- */
-let pg = { id: null, count: 0, order: [], status: "idle", nodes: new Map() };
+let pg = newPg(null);
+function newPg(id) { return { id, count: 0, order: [], status: "idle", nodes: new Map(), rot: new Map(), del: new Set() }; }
 function pageDocId() {
   const sel = document.getElementById("f_file");
   return sel && sel.value ? sel.value : null;
@@ -547,7 +566,7 @@ async function initPages() {
   const sel = document.getElementById("f_file");
   if (sel && !sel.dataset.pgBound) { sel.dataset.pgBound = "1"; sel.addEventListener("change", initPages); }
   if (pg.id === id && pg.status === "ready") { drawPages(); return; }
-  pg = { id, count: 0, order: [], status: "loading", nodes: new Map() };
+  pg = newPg(id); pg.status = "loading";
   area.innerHTML = '<div class="pg-loading">Loading page previews…</div>';
   let j;
   try { j = await api("/api/pages?id=" + encodeURIComponent(id)); } catch (e) { j = { ok: false, error: { message: String(e) } }; }
@@ -575,7 +594,13 @@ function drawPages() {
       node = document.createElement("div");
       node.className = "pg"; node.tabIndex = 0; node.dataset.page = String(n); node.setAttribute("role", "listitem");
       node.innerHTML = `<div class="frame"><img alt="Page ${n}" draggable="false" src="/api/pagethumb?id=${encodeURIComponent(pg.id)}&page=${n}&t=${encodeURIComponent(TOKEN)}"></div>
-        <div class="cap"><span class="pos"></span><span class="was"></span></div>`;
+        <div class="cap"><span class="pos"></span><span class="was"></span></div>
+        <div class="tools">
+          <button type="button" class="tb" data-act="left" title="Turn left" aria-label="Turn page ${n} left"><svg class="i" viewBox="0 0 24 24"><path d="M4 11a8 8 0 1 1 2.3 5.7"/><path d="M4 4v7h7"/></svg></button>
+          <button type="button" class="tb" data-act="right" title="Turn right" aria-label="Turn page ${n} right"><svg class="i"><use href="#i-rotate"/></svg></button>
+          <button type="button" class="tb del" data-act="del" title="Remove page" aria-label="Remove page ${n}"><svg class="i"><use href="#i-delete"/></svg></button>
+        </div>
+        <span class="gone">Removed</span>`;
       pg.nodes.set(n, node);
     }
     grid.appendChild(node);
@@ -587,16 +612,49 @@ function drawPages() {
 function layoutPages(focusPage) {
   const grid = document.getElementById("pagegrid");
   if (!grid) return;
-  pg.order.forEach((n, i) => {
+  let pos = 0, removed = 0, turned = 0, moved = 0;
+  pg.order.forEach((n) => {
     const node = pg.nodes.get(n);
     grid.appendChild(node);
-    node.querySelector(".pos").textContent = String(i + 1);
-    const moved = n !== i + 1;
-    node.classList.toggle("moved", moved);
-    node.querySelector(".was").textContent = moved ? "was " + n : "";
-    node.setAttribute("aria-label", `Page ${n}, now position ${i + 1} of ${pg.count}`);
+    const gone = pg.del.has(n), rot = (pg.rot.get(n) || 0) % 360;
+    node.classList.toggle("deleted", gone);
+    if (gone) { removed++; node.querySelector(".pos").textContent = "–"; node.querySelector(".was").textContent = "page " + n; }
+    else {
+      pos++;
+      node.querySelector(".pos").textContent = String(pos);
+      const wasMoved = n !== pos;
+      if (wasMoved) moved++;
+      node.querySelector(".was").textContent = (wasMoved ? "was " + n : "") + (rot ? (wasMoved ? " · " : "") + rot + "°" : "");
+      node.classList.toggle("moved", wasMoved || rot !== 0);
+    }
+    if (rot && !gone) turned++;
+    node.querySelector(".del").setAttribute("aria-label", (gone ? "Restore page " : "Remove page ") + n);
+    node.querySelector(".del").title = gone ? "Restore page" : "Remove page";
+    node.querySelector(".del").classList.toggle("restore", gone);
+    node.setAttribute("aria-label", gone ? `Page ${n}, removed` : `Page ${n}, now position ${pos}${rot ? ", turned " + rot + " degrees" : ""}`);
+    fitRotation(node, rot);
   });
+  const sum = document.getElementById("pgsum");
+  if (sum) {
+    const parts = [`${pos} of ${pg.count} pages kept`];
+    if (removed) parts.push(`${removed} removed`);
+    if (turned) parts.push(`${turned} turned`);
+    sum.textContent = parts.join(" · ");
+  }
   if (focusPage) { const f = pg.nodes.get(focusPage); if (f) f.focus(); }
+}
+// Show a page turned: rotate the preview and shrink it so a turned page still fits its frame.
+function fitRotation(node, rot) {
+  const img = node.querySelector("img"), frame = node.querySelector(".frame");
+  if (!img.naturalWidth) { img.addEventListener("load", () => fitRotation(node, rot), { once: true }); return; }
+  let k = 1;
+  if (rot === 90 || rot === 270) {
+    const fw = frame.clientWidth, fh = frame.clientHeight;
+    const s0 = Math.min(fw / img.naturalWidth, fh / img.naturalHeight, 1);
+    const w = img.naturalWidth * s0, h = img.naturalHeight * s0;
+    k = Math.min(fw / h, fh / w, 1);
+  }
+  img.style.transform = rot ? `rotate(${rot}deg) scale(${k})` : "";
 }
 function movePage(n, toIndex) {
   const from = pg.order.indexOf(n);
@@ -609,7 +667,7 @@ function movePage(n, toIndex) {
   const view = $("view");
   view.addEventListener("pointerdown", (e) => {
     const tile = e.target.closest(".pg");
-    if (!tile || e.button !== 0) return;
+    if (!tile || e.button !== 0 || e.target.closest(".tb")) return;
     drag = { page: Number(tile.dataset.page), tile, x: e.clientX, y: e.clientY, active: false, ghost: null, dx: 0, dy: 0 };
   });
   window.addEventListener("pointermove", (e) => {
@@ -653,13 +711,28 @@ function movePage(n, toIndex) {
     else if (e.key === "ArrowRight" || e.key === "ArrowDown") to = i + 1;
     else if (e.key === "Home") to = 0;
     else if (e.key === "End") to = pg.order.length - 1;
+    if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); pg.del.has(n) ? pg.del.delete(n) : pg.del.add(n); layoutPages(n); return; }
+    if (e.key === "r" || e.key === "R") { e.preventDefault(); pg.rot.set(n, (((pg.rot.get(n) || 0) + (e.shiftKey ? -90 : 90)) % 360 + 360) % 360); layoutPages(n); return; }
     if (to === null) return;
     e.preventDefault();
     movePage(n, to); layoutPages(n);
   });
   view.addEventListener("click", (e) => {
+    const b = e.target.closest(".pg .tb");
+    if (b) {
+      const n = Number(b.closest(".pg").dataset.page);
+      const turn = (page, d) => pg.rot.set(page, (((pg.rot.get(page) || 0) + d) % 360 + 360) % 360);
+      if (b.dataset.act === "left") turn(n, -90);
+      else if (b.dataset.act === "right") turn(n, 90);
+      else if (pg.del.has(n)) pg.del.delete(n); else pg.del.add(n);
+      layoutPages();
+      return;
+    }
+    const all = (d) => pg.order.forEach((n) => { if (!pg.del.has(n)) pg.rot.set(n, (((pg.rot.get(n) || 0) + d) % 360 + 360) % 360); });
     if (e.target.closest("#pg-reverse")) { pg.order.reverse(); layoutPages(); }
-    else if (e.target.closest("#pg-reset")) { pg.order = pg.order.slice().sort((a, b) => a - b); layoutPages(); }
+    else if (e.target.closest("#pg-left")) { all(-90); layoutPages(); }
+    else if (e.target.closest("#pg-right")) { all(90); layoutPages(); }
+    else if (e.target.closest("#pg-reset")) { pg.order = pg.order.slice().sort((a, b) => a - b); pg.rot.clear(); pg.del.clear(); layoutPages(); }
   });
 })();
 
@@ -677,7 +750,13 @@ async function run() {
     args[key] = (el.dataset.type === "integer" || el.dataset.type === "number") ? Number(val) : val;
   }
   if (current.name === "compress" && !args.target_size) args.level = preset;
-  if (current.name === "reorder" && pg.status === "ready") args.order = pg.order.join(",");
+  if (current.name === GRID_TOOL && pg.status === "ready") {
+    const keep = pg.order.filter((n) => !pg.del.has(n));
+    if (!keep.length) { result = { env: { ok: false, error: { code: "usage", message: "Every page is removed. Restore at least one page." } } }; renderResult(); return; }
+    args.order = keep.join(",");
+    const rot = keep.filter((n) => (pg.rot.get(n) || 0) % 360).map((n) => `${n}:${pg.rot.get(n) % 360}`);
+    if (rot.length) args.rotate = rot.join(",");
+  }
   const fileMap = {};
   if (fk) {
     let ids;
@@ -718,6 +797,7 @@ const SUMMARY = {
     : `Recognised ${r.ocr_pages} of ${r.total_pages} pages${r.already_text_pages ? ` (${r.already_text_pages} already had text)` : ""}. ${r.characters.toLocaleString()} characters are now searchable.`,
   merge: (r) => `Joined ${r.inputs} files into one PDF.`, split: (r) => `Split into ${r.count} files.`,
   extract: (r) => `Kept ${plural(r.pages_kept, "page")}.`, delete: (r) => `${plural(r.pages_remaining, "page")} remain.`,
+  organize: (r) => `Done: ${plural(r.pages_kept, "page")} kept` + (r.pages_removed ? `, ${r.pages_removed} removed` : "") + (r.pages_rotated ? `, ${r.pages_rotated} turned` : "") + ".",
   reorder: () => "Pages reordered.", rotate: (r) => `Rotated ${r.angle} degrees clockwise.`,
   to_images: (r) => `Saved ${plural(r.count, "image")}.`, images_to_pdf: (r) => `Created a PDF with ${plural(r.pages, "page")}.`,
   text: (r) => `Extracted ${r.characters.toLocaleString()} characters of text.`,

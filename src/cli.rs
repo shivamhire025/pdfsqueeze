@@ -123,6 +123,18 @@ pub enum Cmd {
         #[arg(short, long)]
         output: Option<PathBuf>,
     },
+    /// Reorder, rotate and delete pages in one step
+    Organize {
+        input: PathBuf,
+        /// Pages to keep, in their new order, e.g. 3,1,2. Leave a page out to delete it.
+        #[arg(long)]
+        order: String,
+        /// Clockwise turns as page:angle pairs using original page numbers, e.g. 1:90,3:180
+        #[arg(long)]
+        rotate: Option<String>,
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+    },
     /// Rotate pages clockwise by 90, 180 or 270 degrees
     Rotate {
         input: PathBuf,

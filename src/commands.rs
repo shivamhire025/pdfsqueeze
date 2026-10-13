@@ -181,6 +181,7 @@ pub fn command_name(c: &Cmd) -> &'static str {
         Cmd::Extract { .. } => "extract",
         Cmd::Delete { .. } => "delete",
         Cmd::Reorder { .. } => "reorder",
+        Cmd::Organize { .. } => "organize",
         Cmd::Rotate { .. } => "rotate",
         Cmd::ToImages { .. } => "to-images",
         Cmd::ImagesToPdf { .. } => "images-to-pdf",
@@ -320,6 +321,34 @@ pub fn execute(cmd: Cmd, ctx: &Ctx) -> Result<Done> {
             Ok(Done::ok(
                 format!("Reordered -> {}", output.display()),
                 json!({ "output": p(&output) }),
+            ))
+        }
+
+        Cmd::Organize {
+            input,
+            order,
+            rotate,
+            output,
+        } => {
+            let output = output.unwrap_or_else(|| sibling(&input, "organized"));
+            let total = pages::page_count(&input)?;
+            let rotations = match rotate.as_deref() {
+                Some(r) => pages::parse_rotations(r, total)?,
+                None => Vec::new(),
+            };
+            let r = pages::organize(&input, &order, &rotations, &output)?;
+            Ok(Done::ok(
+                format!(
+                    "{} pages kept, {} removed, {} rotated -> {}",
+                    r.pages_kept, r.pages_removed, r.pages_rotated, output.display()
+                ),
+                json!({
+                    "output": p(&output),
+                    "original_pages": r.original_pages,
+                    "pages_kept": r.pages_kept,
+                    "pages_removed": r.pages_removed,
+                    "pages_rotated": r.pages_rotated,
+                }),
             ))
         }
 
