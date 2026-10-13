@@ -257,6 +257,10 @@
   .unum { position: absolute; top: 7px; left: 7px; min-width: 26px; height: 26px; border-radius: 99px; background: var(--accent); color: var(--accent-ink); font-weight: 700; display: grid; place-items: center; padding: 0 7px; font-variant-numeric: tabular-nums; }
   .uname { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 4px; }
   .umeta { color: var(--muted); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+  .cx { position: absolute; top: 7px; right: 7px; width: 26px; height: 26px; padding: 0; line-height: 0; border-radius: 50%; border: 1px solid var(--line);
+        background: rgba(10, 7, 5, .62); color: var(--ink); cursor: pointer; display: grid; place-items: center; z-index: 2; }
+  .cx svg.i { width: 14px; height: 14px; }
+  .cx:hover, .cx:focus-visible { background: var(--bad-soft); color: var(--bad); border-color: var(--bad); outline: none; }
   .ugrip { justify-self: center; margin-top: 6px; width: 38px; height: 30px; border-radius: 10px; display: grid; place-items: center; color: var(--muted); border: 1px solid var(--line); background: rgba(255, 238, 222, .06); cursor: grab; }
   .ugrip svg.i { width: 18px; height: 18px; }
   .ucards.sortable .ucard[data-uid] { cursor: grab; user-select: none; -webkit-user-select: none; touch-action: none; }
@@ -479,13 +483,21 @@ function renderDocs() {
   }
   $("norail").classList.toggle("hidden", files.length > 0);
 }
+async function removeDoc(id) {
+  if (running) return;
+  await post("/api/remove", { id });
+  files = files.filter((f) => f.id !== id); selected.delete(id);
+  mergeOrder = mergeOrder.filter((x) => x !== id);
+  if (active === id) active = null;
+  if (pg.id === id) pg = newPg(null);
+  renderDocs(); render();
+}
 $("docs").addEventListener("click", async (e) => {
   const rm = e.target.closest("[data-remove]");
   if (rm) {
     e.stopPropagation();
-    await post("/api/remove", { id: rm.dataset.remove });
-    files = files.filter((f) => f.id !== rm.dataset.remove); selected.delete(rm.dataset.remove);
-    renderDocs(); render(); return;
+    await removeDoc(rm.dataset.remove);
+    return;
   }
   const d = e.target.closest(".doc");
   if (d) { toggle(d.dataset.id); }
@@ -603,7 +615,8 @@ function renderTask(v) {
       const cards = list.map((f, i) => `<div class="ucard" data-uid="${esc(f.id)}">
           <div class="uframe">${f.kind === "pdf" || f.kind === "image"
             ? `<img alt="" src="/api/thumb?id=${encodeURIComponent(f.id)}&t=${encodeURIComponent(TOKEN)}">` : ico("doc")}
-            ${isMerge ? `<span class="unum">${i + 1}</span>` : ""}</div>
+            ${isMerge ? `<span class="unum">${i + 1}</span>` : ""}
+            <button class="cx" type="button" data-remove="${esc(f.id)}" title="Remove from here" aria-label="Remove ${esc(f.name)}">${ico("close")}</button></div>
           <div class="uname" title="${esc(f.name)}">${esc(f.name)}</div>
           <div class="umeta">${esc([f.pages ? plural(f.pages, "page") : null, human(f.size)].filter(Boolean).join(" · "))}</div>
           ${isMerge && list.length > 1 ? `<div class="ugrip" tabindex="0" role="button" title="Drag to change the order" aria-label="Move ${esc(f.name)}: drag, or use the left and right arrow keys"><svg class="i"><use href="#i-move"/></svg></div>` : ""}
@@ -616,7 +629,7 @@ function renderTask(v) {
         </button>`;
       html += `<div class="field"><span class="lbl">${isMerge ? "Joined in this order" : "Using"}</span>
         <div class="ucards${isMerge && list.length > 1 ? " sortable" : ""}">${cards}${addCard}</div>
-        ${isMerge && list.length > 1 ? `<div class="hint">Result: ${plural(pages, "page")} from ${list.length} documents. Pick or unpick documents in the list on the left.</div>` : ""}</div>`;
+        ${isMerge && list.length > 1 ? `<div class="hint">Result: ${plural(pages, "page")} from ${list.length} documents. Use the cross on a card to remove it.</div>` : ""}</div>`;
     } else {
       // One document: the list on the left already says which. Only mention it when there is a choice.
       const doc = files.find((f) => f.id === activeId());
@@ -678,6 +691,8 @@ function fieldHtml(key, p, required) {
 }
 
 $("view").addEventListener("click", (e) => {
+  const rm = e.target.closest("[data-remove]");
+  if (rm) { removeDoc(rm.dataset.remove); return; }
   const c = e.target.closest("[data-cat]");
   if (c) {
     if (running) return;
@@ -945,7 +960,7 @@ function layoutUCards() {
   const view = $("view");
   view.addEventListener("pointerdown", (e) => {
     const card = e.target.closest(".ucards.sortable .ucard[data-uid]");
-    if (!card || e.button !== 0) return;
+    if (!card || e.button !== 0 || e.target.closest(".cx")) return;
     d = { id: card.dataset.uid, card, x: e.clientX, y: e.clientY, active: false, ghost: null, dx: 0, dy: 0 };
   });
   window.addEventListener("pointermove", (e) => {

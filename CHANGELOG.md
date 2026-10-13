@@ -13,7 +13,8 @@ Plain-language record of what pdfsqueeze can do and how well that has been check
   page grid and a finished result in a browser tab; not yet seen in the real app window.
 - **Merge shows thumbnails**: each document appears as a card with its first page, page count and
   size, numbered in merge order, with a move grip at the bottom (a grab hand on hover): drag a
-  card to reorder, or focus the grip and use the arrow keys. A running total of pages is shown. A dashed glass "Add a PDF" card the same size sits after the last document and opens
+  card to reorder, or focus the grip and use the arrow keys. Each card has a cross to remove that
+  document without going back to the list. A running total of pages is shown. A dashed glass "Add a PDF" card the same size sits after the last document and opens
   the file picker. Other multi-file tools show the same cards. *Verified:* moving a card changed the merge
   order and the produced file followed it.
 - **Organize pages**: one screen for reordering, rotating and deleting pages. Real page
