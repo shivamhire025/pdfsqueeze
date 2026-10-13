@@ -6,6 +6,10 @@ Plain-language record of what pdfsqueeze can do and how well that has been check
 ## Unreleased (work since the 2026-10-10 CI run; not yet on GitHub)
 
 ### Added
+- **Better legibility**: secondary text and links were darkened to at least 4.5:1 contrast
+  against the lightest and darkest parts of the background (measured, not guessed), a soft
+  frosted backing sits behind working screens, borders and selection states are firmer, and
+  disabled controls are easier to read. The first screen keeps the photograph clear.
 - **Simpler layout**: one slim toolbar (icon and label tabs with an underline for the active
   one, tools of the group as plain text links) replaces the rows of pills. The big title,
   subtitle and instruction paragraph are gone (one quiet line inside the page toolbar says how

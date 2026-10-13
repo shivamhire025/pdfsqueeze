@@ -12,11 +12,11 @@
     --rail: rgba(255, 255, 255, .62);
     --surface: rgba(255, 255, 255, .80);
     --ink: #14251b;
-    --muted: #4d6657;
-    --faint: #7b9283;
-    --line: rgba(24, 58, 36, .15);
+    --muted: #3a5445;
+    --faint: #4d6659;
+    --line: rgba(24, 58, 36, .22);
     --accent: #86cd78;      /* leaf green: fills, buttons, selection */
-    --accent-fg: #2c7a3a;   /* the same green, deeper, for text and icons on light */
+    --accent-fg: #22652d;   /* the same green, deeper, for text and icons on light */
     --accent-ink: #0b2410;
     --accent-soft: rgba(134, 205, 120, .26);
     --good: #1f7a3e;
@@ -379,6 +379,21 @@
   .preset, .tile { border-radius: 10px; }
   input[type=text], input[type=number], input[type=password], select { border-radius: 8px; }
   .grp span { white-space: nowrap; }
+  /* legibility: a frosted backing keeps the photograph soft behind working screens, text colours are
+     darker (secondary text 5:1 or better) and disabled states are still readable */
+  main { background: rgba(255, 255, 255, .50); -webkit-backdrop-filter: blur(12px) saturate(1.08); backdrop-filter: blur(12px) saturate(1.08); }
+  main:has(.cine) { background: transparent; -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .rail { background: rgba(255, 255, 255, .80); }
+  .pg, .ucard { background: rgba(255, 255, 255, .86); }
+  .pg-bar { background: rgba(255, 255, 255, .96); border: 1px solid var(--line); }
+  .sheet { background: rgba(255, 255, 255, .88); }
+  .ib:disabled { opacity: .45; }
+  .grp[aria-pressed="true"] { box-shadow: inset 0 -3px 0 var(--accent-fg); }
+  .sub[aria-pressed="true"] { background: rgba(134, 205, 120, .42); }
+  .doc.active { background: rgba(134, 205, 120, .38); }
+  .pg.sel { background: rgba(134, 205, 120, .42); box-shadow: inset 0 0 0 2px var(--accent-fg); border-color: var(--accent-fg); }
+  .pg .check { border-color: var(--muted); }
+  :focus-visible { outline: 2px solid var(--accent-fg); outline-offset: 2px; }
   /* screens made only of cards (pages, documents) sit directly on the background; forms keep a panel */
   .sheet:has(.pg-bar), .sheet:has(.ucards):not(:has(input)):not(:has(select)):not(:has(.presets)) { background: transparent; border: 0; padding: 0; }
   .sheet:has(.pg-bar) .runrow, .sheet:has(.ucards):not(:has(input)):not(:has(.presets)) .runrow { margin-top: 14px; }
