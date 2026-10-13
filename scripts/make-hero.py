@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generates assets/hero.jpg: a long archive corridor of paper-filled shelves in soft forest light.
+"""Generates assets/hero.jpg: a long archive corridor of paper-filled shelves, light and sage green.
 
 Original artwork made from code, so there is no licence to carry. To use a real
 photograph instead, replace assets/hero.jpg (2400x1350 works well; keep it under
@@ -105,6 +105,11 @@ vig = np.clip(1.2 - 0.62 * (vx ** 2 + vy ** 2), 0.22, 1.0)
 out *= (left * vig)[:, :, None]
 out *= np.array([0.86, 1.0, 0.84])[None, None, :]
 out += rng.normal(0, 3.0, out.shape)
+# Light theme: keep the shapes, lift everything toward a bright airy sage.
+lum = np.clip(out, 0, 255).mean(axis=2, keepdims=True)
+light = 252.0 - (255.0 - lum) * 0.36
+tint = np.array([0.80, 0.97, 0.78])[None, None, :]   # sage: pull red and blue down, keep green
+out = 255.0 - (255.0 - light) * (1.0 + (1.0 - tint) * 2.4)
 Image.fromarray(np.clip(out, 0, 255).astype(np.uint8)).save(
     "assets/hero.jpg", quality=64, optimize=True, progressive=True, subsampling="4:2:0")
 print("wrote assets/hero.jpg")
