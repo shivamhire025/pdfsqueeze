@@ -328,14 +328,14 @@
     <div class="soon" role="status">The first public release is being prepared. These buttons will start working the moment it is published; until then they open the project's releases page.</div>
     <div class="cols" id="dl">
       <div class="col" data-os="mac">
-        <h3>macOS</h3><p class="desc">Apple Silicon and Intel Macs.</p>
-        <a class="btn solid block" data-file="pdfsqueeze-macos-arm64.tar.gz" href="#"><svg class="ic dl-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg>Apple Silicon</a>
+        <h3>macOS</h3><p class="desc">Unzip and double-click pdfsqueeze. Apple Silicon and Intel Macs.</p>
+        <a class="btn solid block" data-file="pdfsqueeze-macos-arm64.app.zip" href="#"><svg class="ic dl-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg>Apple Silicon</a>
         <div class="other mono">Other files for macOS</div>
-        <a class="row" data-file="pdfsqueeze-macos-x86_64.tar.gz" href="#"><b>Intel Macs</b><svg class="ic dl-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg><span class="d">Needs macOS 15 or later.</span><code>pdfsqueeze-macos-x86_64.tar.gz</code></a>
-        <a class="row" data-file="pdfsqueeze-macos-arm64.tar.gz" href="#"><b>Command-line tool</b><svg class="ic dl-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg><span class="d">The same download: also runs headless for scripts and agents.</span><code>pdfsqueeze-macos-arm64.tar.gz</code></a>
+        <a class="row" data-file="pdfsqueeze-macos-x86_64.app.zip" href="#"><b>Intel Macs</b><svg class="ic dl-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg><span class="d">Needs macOS 15 or later.</span><code>pdfsqueeze-macos-x86_64.app.zip</code></a>
+        <a class="row" data-file="pdfsqueeze-macos-arm64.tar.gz" href="#"><b>Command-line tool</b><svg class="ic dl-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg><span class="d">The same program as a folder, for scripts and agents. Also what the installer uses.</span><code>pdfsqueeze-macos-arm64.tar.gz</code></a>
       </div>
       <div class="col" data-os="windows">
-        <h3>Windows</h3><p class="desc">Windows 10 and 11, 64-bit. Includes OCR.</p>
+        <h3>Windows</h3><p class="desc">Unzip and double-click pdfsqueeze.exe. Windows 10 and 11, 64-bit, with OCR.</p>
         <a class="btn solid block" data-file="pdfsqueeze-windows-x64.zip" href="#"><svg class="ic dl-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg>Portable, 64-bit</a>
         <div class="other mono">Other files for Windows</div>
         <a class="row" data-file="pdfsqueeze-windows-x86.zip" href="#"><b>Portable, 32-bit</b><svg class="ic dl-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg><span class="d">Older 32-bit Windows. No OCR in this build.</span><code>pdfsqueeze-windows-x86.zip</code></a>
@@ -353,7 +353,7 @@
       <div class="cmd"><code id="c1">curl -fsSL https://raw.githubusercontent.com/shivamhire025/pdfsqueeze/main/install.sh | sh</code><small class="mono">macOS · Linux</small><button data-copy="c1">Copy</button></div>
       <div class="cmd"><code id="c2">irm https://raw.githubusercontent.com/shivamhire025/pdfsqueeze/main/install.ps1 | iex</code><small class="mono">Windows</small><button data-copy="c2">Copy</button></div>
     </div>
-    <p class="note">The one-line installers need no password or administrator rights. The apps are not code-signed yet, so if you download an archive in a browser your system may ask you to confirm the first launch.</p>
+    <p class="note"><b>First launch.</b> The apps are not code-signed yet (signing costs money, and this project is free). On a Mac, if it says the developer cannot be verified, open System Settings, Privacy &amp; Security and choose Open Anyway. On Windows choose More info, then Run anyway. The one-line installers above avoid both prompts and need no password or administrator rights.</p>
   </div>
 </div></section>
 

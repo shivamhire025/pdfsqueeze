@@ -36,6 +36,19 @@ pdfsqueeze tools --json                         # every command with a JSON Sche
 Stable exit codes (0 ok, 1 failure, 2 usage, 3 completed with problems) and error codes.
 See [AGENTS.md](AGENTS.md) for the full contract, MCP client configuration and recipes.
 
+## Opening the app
+
+- **macOS:** unzip `pdfsqueeze-macos-<arch>.app.zip` and double-click **pdfsqueeze**. It is not
+  notarized (that needs a paid Apple account), so the first time macOS may say it cannot verify the
+  developer: open **System Settings, Privacy & Security** and choose **Open Anyway**, or run
+  `xattr -dr com.apple.quarantine pdfsqueeze.app` once. The one-line installer below avoids this.
+- **Windows:** unzip and double-click **pdfsqueeze.exe**. The first time, SmartScreen may warn
+  because the program is not code-signed; choose **More info, Run anyway**.
+- **Linux:** run `./pdfsqueeze` from the unzipped folder (it opens in your browser).
+- **Any system, from a terminal:** `pdfsqueeze ui` opens the window; `pdfsqueeze --help` lists the
+  commands. Started with no arguments from a terminal or script it prints help; set
+  `PDFSQUEEZE_NO_GUI=1` to guarantee that.
+
 ## Install (nothing else needs to be installed)
 
 | Platform | Command | Status |

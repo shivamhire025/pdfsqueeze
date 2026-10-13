@@ -177,6 +177,12 @@ one pass (`order` lists the pages to keep in their new order; `rotate` is `page:
 as `1:90,3:180` using original page numbers). `delete`, `reorder` and `rotate` do one job each.
 Page specs are 1-based, such as `1-3,7,z` where `z` is the last page.
 
+## Starting it
+
+Always pass a subcommand (or `--help`). Started with no arguments and with both stdin and stdout
+redirected, the program assumes it was launched from the desktop and opens its window; set
+`PDFSQUEEZE_NO_GUI=1` in agent and CI environments to rule that out.
+
 ## Limits worth knowing
 
 - OCR needs reasonably upright scans; there is no deskew.

@@ -1,7 +1,8 @@
 # Builds self-contained packages and attaches them to a GitHub release when a
 # version tag is pushed (or when run by hand for a dry run).
 #
-#   macOS    arm64 + Intel     pdfsqueeze-macos-<arch>.tar.gz
+#   macOS    arm64 + Intel     pdfsqueeze-macos-<arch>.app.zip  (the app, double-click)
+#                              pdfsqueeze-macos-<arch>.tar.gz   (command line + installer)
 #   Linux    x86_64 + arm64    pdfsqueeze-linux-<arch>.tar.gz
 #   Windows  x64               pdfsqueeze-windows-x64.zip
 #   Windows  x86 (experimental, no OCR)
@@ -49,6 +50,14 @@ jobs:
         run: brew install ghostscript qpdf tesseract
       - run: cargo test --release
       - run: bash ./scripts/package-macos.sh
+      - name: Build the double-clickable app (.app, zipped)
+        run: bash ./scripts/package-macos-app.sh
+      - name: Smoke test the app with system engines out of reach
+        run: |
+          mkdir smoke-app && ditto -x -k dist/pdfsqueeze-macos-${{ matrix.arch }}.app.zip smoke-app
+          codesign --verify --deep --strict smoke-app/pdfsqueeze.app
+          SMOKE_REQUIRE_BUNDLED=1 env -i HOME="$HOME" PATH=/usr/bin:/bin \
+            bash ./scripts/smoke.sh smoke-app/pdfsqueeze.app/Contents/MacOS/pdfsqueeze
       - name: Smoke test the package with system engines out of reach
         run: |
           mkdir smoke && tar -xzf dist/pdfsqueeze-macos-${{ matrix.arch }}.tar.gz -C smoke
@@ -57,12 +66,14 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: pdfsqueeze-macos-${{ matrix.arch }}
-          path: dist/pdfsqueeze-macos-${{ matrix.arch }}.tar.gz*
+          path: |
+            dist/pdfsqueeze-macos-${{ matrix.arch }}.tar.gz*
+            dist/pdfsqueeze-macos-${{ matrix.arch }}.app.zip*
       - name: Attach to release
         if: startsWith(github.ref, 'refs/tags/v')
         run: |
           gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --generate-notes
-          gh release upload "$GITHUB_REF_NAME" dist/pdfsqueeze-macos-${{ matrix.arch }}.tar.gz* --clobber
+          gh release upload "$GITHUB_REF_NAME" dist/pdfsqueeze-macos-${{ matrix.arch }}.tar.gz* dist/pdfsqueeze-macos-${{ matrix.arch }}.app.zip* --clobber
 
   linux:
     strategy:

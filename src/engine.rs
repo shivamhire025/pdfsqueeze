@@ -105,7 +105,8 @@ pub fn plain_path(p: PathBuf) -> PathBuf {
 
 /// Folder holding the bundled engines (`bin/`, `share/`), if any.
 /// Checked in order: `$PDFSQUEEZE_ENGINES`, then `engines/` next to the
-/// executable (release package layout), then `../engines/`.
+/// executable (release package layout), then `../engines/`, then
+/// `../Resources/engines/` (inside a macOS .app).
 pub fn bundle_dir() -> Option<PathBuf> {
     let mut candidates: Vec<PathBuf> = Vec::new();
     if let Some(p) = std::env::var_os("PDFSQUEEZE_ENGINES") {
@@ -115,6 +116,8 @@ pub fn bundle_dir() -> Option<PathBuf> {
         if let Some(dir) = exe.parent() {
             candidates.push(dir.join("engines"));
             candidates.push(dir.join("../engines"));
+            // macOS app bundle: Contents/MacOS/pdfsqueeze, tools in Contents/Resources/engines
+            candidates.push(dir.join("../Resources/engines"));
         }
     }
     candidates

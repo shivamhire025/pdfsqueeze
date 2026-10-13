@@ -946,7 +946,15 @@ mod window {
         #[cfg(target_os = "macos")]
         install_menu();
 
+        let icon = image::load_from_memory(include_bytes!("../assets/icon-256.png"))
+            .ok()
+            .and_then(|i| {
+                let rgba = i.to_rgba8();
+                let (w, h) = rgba.dimensions();
+                tao::window::Icon::from_rgba(rgba.into_raw(), w, h).ok()
+            });
         let window = WindowBuilder::new()
+            .with_window_icon(icon)
             .with_title("pdfsqueeze")
             .with_inner_size(LogicalSize::new(1180.0, 800.0))
             .with_min_inner_size(LogicalSize::new(820.0, 560.0))

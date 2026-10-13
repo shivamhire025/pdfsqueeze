@@ -6,6 +6,15 @@ Plain-language record of what pdfsqueeze can do and how well that has been check
 ## Unreleased (work since the 2026-10-10 CI run; not yet on GitHub)
 
 ### Added
+- **Double-click to open**: started from the desktop with no arguments (Finder or Explorer), the
+  program opens the window; from a terminal or script it still prints help
+  (`PDFSQUEEZE_NO_GUI=1` forces that). On Windows the console that Explorer opens is closed.
+  Windows and Linux behaviour was compiled and unit-tested in CI only, not used by a person.
+- **A real Mac app**: `scripts/package-macos-app.sh` builds `pdfsqueeze.app` (zipped) with its
+  tools inside and an app icon. *Verified on macOS (Apple Silicon):* the unzipped app passes the
+  full smoke test (53 of 53) with Homebrew hidden, launches with `open`, shows a 1180x832
+  window and a menu bar, and quits cleanly without leaving files behind. Ad-hoc signed, not
+  notarized, so the first launch needs one confirmation (see README).
 - **Landing page** (live at https://shivamhire025.github.io/pdfsqueeze/, source `docs/index.html`): redesigned in a dark
   forest-green editorial style: a framed hero over the leaf photograph, a wide heavy headline with
   one green accent word ("Stop uploading your PDFs to the internet"), numbered monospace section

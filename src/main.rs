@@ -22,7 +22,50 @@ use cli::{Cli, Cmd};
 use commands::{command_name, envelope, execute, Ctx, EXIT_USAGE};
 use serde_json::json;
 
+/// Should a bare launch open the app window? Yes when it was started from the desktop (double-click
+/// in Finder or Explorer): no arguments, and neither input nor output is a terminal. Never from a
+/// terminal or a script, so `pdfsqueeze` there still prints help. `PDFSQUEEZE_NO_GUI=1` forces help.
+fn opens_window_on_launch(arg_count: usize, stdin_tty: bool, stdout_tty: bool, no_gui: bool, can_window: bool) -> bool {
+    arg_count <= 1 && !stdin_tty && !stdout_tty && !no_gui && can_window
+}
+
+/// Windows builds are console programs (so scripts get output). When started by double-click the
+/// system opens a console just for us; close it so only the window shows. When started from a
+/// terminal the console is shared, and is left alone.
+#[cfg(windows)]
+fn release_own_console() {
+    extern "system" {
+        fn GetConsoleProcessList(list: *mut u32, count: u32) -> u32;
+        fn FreeConsole() -> i32;
+    }
+    let mut pids = [0u32; 4];
+    // SAFETY: plain Win32 calls with a valid buffer.
+    unsafe {
+        if GetConsoleProcessList(pids.as_mut_ptr(), pids.len() as u32) == 1 {
+            FreeConsole();
+        }
+    }
+}
+#[cfg(not(windows))]
+fn release_own_console() {}
+
 fn main() {
+    use std::io::IsTerminal;
+    if opens_window_on_launch(
+        std::env::args().count(),
+        std::io::stdin().is_terminal(),
+        std::io::stdout().is_terminal(),
+        std::env::var_os("PDFSQUEEZE_NO_GUI").is_some(),
+        ui::window_available(),
+    ) {
+        release_own_console();
+        if let Err(e) = ui::serve(None, ui::Mode::Window) {
+            eprintln!("error: {e:#}");
+            std::process::exit(1);
+        }
+        return;
+    }
+
     let wants_json = std::env::args().any(|a| a == "--json");
 
     let cli = match Cli::try_parse() {
@@ -69,6 +112,7 @@ fn main() {
     }
 
     if let Cmd::Ui { port, no_open, browser } = &cli.cmd {
+        release_own_console();
         let mode = if *no_open {
             ui::Mode::ServerOnly
         } else if *browser || !ui::window_available() {
@@ -107,5 +151,20 @@ fn main() {
             eprintln!("error: {e:#}");
             std::process::exit(1);
         }
+    }
+}
+
+#[cfg(test)]
+mod launch_tests {
+    use super::opens_window_on_launch as f;
+
+    #[test]
+    fn only_a_bare_desktop_launch_opens_the_window() {
+        assert!(f(1, false, false, false, true)); // double-click
+        assert!(!f(1, true, false, false, true)); // typed in a terminal
+        assert!(!f(1, false, true, false, true)); // output is a terminal
+        assert!(!f(2, false, false, false, true)); // has arguments
+        assert!(!f(1, false, false, true, true)); // PDFSQUEEZE_NO_GUI
+        assert!(!f(1, false, false, false, false)); // no window on this platform (Linux)
     }
 }
