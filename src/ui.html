@@ -256,7 +256,14 @@
   .unum { position: absolute; top: 7px; left: 7px; min-width: 26px; height: 26px; border-radius: 99px; background: var(--accent); color: var(--accent-ink); font-weight: 700; display: grid; place-items: center; padding: 0 7px; font-variant-numeric: tabular-nums; }
   .uname { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 4px; }
   .umeta { color: var(--muted); font-size: 12.5px; font-variant-numeric: tabular-nums; }
-  .umove { display: flex; justify-content: center; gap: 4px; margin-top: 4px; }
+  .ugrip { justify-self: center; margin-top: 6px; width: 38px; height: 30px; border-radius: 10px; display: grid; place-items: center; color: var(--muted); border: 1px solid var(--line); background: rgba(255, 238, 222, .06); cursor: grab; }
+  .ugrip svg.i { width: 18px; height: 18px; }
+  .ucards.sortable .ucard[data-uid] { cursor: grab; user-select: none; -webkit-user-select: none; touch-action: none; }
+  .ucards.sortable .ucard[data-uid]:hover { border-color: var(--accent); }
+  .ucards.sortable .ucard[data-uid]:hover .ugrip, .ugrip:focus-visible { color: var(--accent); border-color: var(--accent); outline: none; }
+  .ucard.lifted { opacity: .3; border-style: dashed; }
+  .ucard-ghost { position: fixed; z-index: 30; pointer-events: none; margin: 0; transform: rotate(2deg); box-shadow: var(--shadow); opacity: .96; cursor: grabbing; background: var(--surface); }
+  body.grabbing, body.grabbing * { cursor: grabbing !important; }
   .ib.sm { width: 32px; height: 32px; border-color: var(--line); }
   .ib.sm svg.i { width: 17px; height: 17px; }
   svg.i.flip { transform: scaleX(-1); }
@@ -333,6 +340,7 @@
     <symbol id="i-delete" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></symbol>
     <symbol id="i-organize" viewBox="0 0 24 24"><rect x="3" y="4" width="7" height="9" rx="1.5"/><rect x="14" y="4" width="7" height="9" rx="1.5"/><path d="M6.5 17v3M17.5 17v3M4 20h5M15 20h5"/></symbol>
     <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+    <symbol id="i-move" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M12 3 9 6M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3"/></symbol>
     <symbol id="i-rotl" viewBox="0 0 24 24"><path d="M4 11a8 8 0 1 1 2.3 5.7"/><path d="M4 4v7h7"/></symbol>
     <symbol id="i-selall" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="m8 12 3 3 5-6"/></symbol>
     <symbol id="i-selnone" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3" stroke-dasharray="3 3"/></symbol>
@@ -597,19 +605,16 @@ function renderTask(v) {
             ${isMerge ? `<span class="unum">${i + 1}</span>` : ""}</div>
           <div class="uname" title="${esc(f.name)}">${esc(f.name)}</div>
           <div class="umeta">${esc([f.pages ? plural(f.pages, "page") : null, human(f.size)].filter(Boolean).join(" · "))}</div>
-          ${isMerge && list.length > 1 ? `<div class="umove">
-            <button class="ib sm" type="button" data-mv="-1" data-id="${esc(f.id)}" ${i === 0 ? "disabled" : ""} title="Move earlier" aria-label="Move ${esc(f.name)} earlier"><svg class="i flip"><use href="#i-arrow"/></svg></button>
-            <button class="ib sm" type="button" data-mv="1" data-id="${esc(f.id)}" ${i === list.length - 1 ? "disabled" : ""} title="Move later" aria-label="Move ${esc(f.name)} later"><svg class="i"><use href="#i-arrow"/></svg></button>
-          </div>` : ""}
+          ${isMerge && list.length > 1 ? `<div class="ugrip" tabindex="0" role="button" title="Drag to change the order" aria-label="Move ${esc(f.name)}: drag, or use the left and right arrow keys"><svg class="i"><use href="#i-move"/></svg></div>` : ""}
         </div>`).join("");
       // Same size as a document card, in the glass style: opens the file picker.
       const addCard = `<button class="ucard add" type="button" data-choose aria-label="Add another PDF">
           <div class="uframe"><svg class="i"><use href="#i-plus"/></svg></div>
           <div class="uname">Add a PDF</div><div class="umeta">${isMerge ? "Joined at the end" : "From this computer"}</div>
-          ${isMerge && list.length > 1 ? '<div class="umove" aria-hidden="true"><span class="ib sm" style="visibility:hidden"></span></div>' : ""}
+          ${isMerge && list.length > 1 ? '<div class="ugrip" aria-hidden="true" style="visibility:hidden"><svg class="i"><use href="#i-move"/></svg></div>' : ""}
         </button>`;
       html += `<div class="field"><span class="lbl">${isMerge ? "Joined in this order" : "Using"}</span>
-        <div class="ucards">${cards}${addCard}</div>
+        <div class="ucards${isMerge && list.length > 1 ? " sortable" : ""}">${cards}${addCard}</div>
         ${isMerge && list.length > 1 ? `<div class="hint">Result: ${plural(pages, "page")} from ${list.length} documents. Pick or unpick documents in the list on the left.</div>` : ""}</div>`;
     } else {
       // One document: the list on the left already says which. Only mention it when there is a choice.
@@ -672,13 +677,6 @@ function fieldHtml(key, p, required) {
 }
 
 $("view").addEventListener("click", (e) => {
-  const mv = e.target.closest("[data-mv]");
-  if (mv) {
-    const id = mv.dataset.id, d = Number(mv.dataset.mv);
-    const list = orderedChosen().map((f) => f.id), i = list.indexOf(id), j = i + d;
-    if (i >= 0 && j >= 0 && j < list.length) { [list[i], list[j]] = [list[j], list[i]]; mergeOrder = list; render(); }
-    return;
-  }
   const c = e.target.closest("[data-cat]");
   if (c) {
     if (running) return;
@@ -924,6 +922,79 @@ function selectClick(n, shift) {
     if (!b || b.disabled) return;
     pageAction(b.dataset.pgact, null);
     layoutPages();
+  });
+})();
+
+
+/* ---------- merge: drag document cards to change the order ---------- */
+function layoutUCards() {
+  const box = document.querySelector(".ucards");
+  if (!box) return;
+  const add = box.querySelector(".ucard.add");
+  orderedChosen();
+  mergeOrder.forEach((id, i) => {
+    const n = box.querySelector(`.ucard[data-uid="${CSS.escape(id)}"]`);
+    if (!n) return;
+    box.insertBefore(n, add);
+    const num = n.querySelector(".unum"); if (num) num.textContent = String(i + 1);
+  });
+}
+(function wireUCards() {
+  let d = null;
+  const view = $("view");
+  view.addEventListener("pointerdown", (e) => {
+    const card = e.target.closest(".ucards.sortable .ucard[data-uid]");
+    if (!card || e.button !== 0) return;
+    d = { id: card.dataset.uid, card, x: e.clientX, y: e.clientY, active: false, ghost: null, dx: 0, dy: 0 };
+  });
+  window.addEventListener("pointermove", (e) => {
+    if (!d) return;
+    if (!d.active) {
+      if (Math.hypot(e.clientX - d.x, e.clientY - d.y) < 5) return;
+      d.active = true;
+      const r = d.card.getBoundingClientRect();
+      d.dx = e.clientX - r.left; d.dy = e.clientY - r.top;
+      const g = d.card.cloneNode(true);
+      g.classList.add("ucard-ghost"); g.style.width = r.width + "px";
+      document.body.appendChild(g); d.ghost = g;
+      d.card.classList.add("lifted");
+      document.body.classList.add("grabbing");
+    }
+    follow(e);
+  });
+  // Move the ghost under the pointer and put the dragged card where the pointer is.
+  const follow = (e) => {
+    if (!d || !d.active) return;
+    d.ghost.style.left = (e.clientX - d.dx) + "px";
+    d.ghost.style.top = (e.clientY - d.dy) + "px";
+    const over = document.elementFromPoint(e.clientX, e.clientY);
+    const t = over && over.closest && over.closest(".ucard[data-uid]");
+    if (t && t !== d.card) {
+      const list = orderedChosen().map((f) => f.id);
+      const from = list.indexOf(d.id), to = list.indexOf(t.dataset.uid);
+      if (from >= 0 && to >= 0) { list.splice(from, 1); list.splice(to, 0, d.id); mergeOrder = list; layoutUCards(); }
+    }
+  };
+  const end = (e) => {
+    if (!d) return;
+    if (e && e.type === "pointerup") follow(e); // honour where the pointer was released
+    if (d.ghost) d.ghost.remove();
+    d.card.classList.remove("lifted");
+    document.body.classList.remove("grabbing");
+    d = null;
+    render();
+  };
+  window.addEventListener("pointerup", end);
+  window.addEventListener("pointercancel", () => end(null));
+  view.addEventListener("keydown", (e) => {
+    const grip = e.target.closest && e.target.closest(".ugrip");
+    if (!grip || (e.key !== "ArrowLeft" && e.key !== "ArrowRight")) return;
+    const id = grip.closest(".ucard").dataset.uid;
+    const list = orderedChosen().map((f) => f.id), i = list.indexOf(id), j = i + (e.key === "ArrowLeft" ? -1 : 1);
+    if (i < 0 || j < 0 || j >= list.length) return;
+    e.preventDefault();
+    [list[i], list[j]] = [list[j], list[i]]; mergeOrder = list; render();
+    const again = document.querySelector(`.ucard[data-uid="${CSS.escape(id)}"] .ugrip`); if (again) again.focus();
   });
 })();
 
