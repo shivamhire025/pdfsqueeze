@@ -330,6 +330,58 @@
   .chapters b { font-size: 12.5px; color: var(--muted); font-weight: 600; letter-spacing: .06em; font-variant-numeric: tabular-nums; }
   .chapters span { font-size: 15px; }
   @media (max-width: 760px) { .app { margin: 8px; height: calc(100% - 16px); border-radius: 20px; } .chapters { grid-template-columns: 1fr; gap: 12px; } }
+
+  /* ---- minimal layer: flatter and quieter, closer to a desktop app than a dashboard ---- */
+  :root { --radius: 12px; }
+  .app { margin: 0; height: 100%; border: 0; border-radius: 0; background: transparent; grid-template-columns: 252px minmax(0, 1fr); }
+  .rail, .sheet, .banner, .tile, .doc, .pg-bar, .grps, .grp.icon-only, .pg, .ucard { -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none; }
+  .rail { padding: 18px 10px 12px; gap: 10px; background: rgba(255, 255, 255, .74); }
+  .brand { padding: 0 8px; }
+  .offline { margin: 0 8px; font-weight: 500; }
+  .rail h2 { margin: 6px 8px 0; }
+  .docs { gap: 2px; }
+  .doc { grid-template-columns: 34px minmax(0, 1fr) auto; gap: 10px; padding: 6px 8px; border: 0; border-radius: 8px; background: transparent; }
+  .doc:hover { background: rgba(24, 58, 36, .06); }
+  .doc[aria-pressed="true"] { background: rgba(24, 58, 36, .06); }
+  .doc.active { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent-fg); }
+  .thumb { width: 34px; height: 44px; border-radius: 4px; }
+  .doc .n { font-size: 13.5px; font-weight: 600; }
+  .doc .s { font-size: 12px; }
+  .add { border-radius: 8px; padding: 9px; font-weight: 500; }
+  .stage { max-width: 1120px; padding: 14px 28px 40px; }
+  .toolbar { border-bottom: 1px solid var(--line); margin: 0 0 8px; gap: 6px; }
+  .grps { background: transparent; border: 0; border-radius: 0; padding: 0; gap: 2px; -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .grp { border-radius: 0; padding: 12px 12px; font-weight: 600; font-size: 14px; color: var(--muted); background: transparent; box-shadow: inset 0 -2px 0 transparent; }
+  .grp svg.i { width: 19px; height: 19px; }
+  .grp:hover { color: var(--ink); }
+  .grp[aria-pressed="true"] { background: transparent; color: var(--ink); box-shadow: inset 0 -2px 0 var(--accent-fg); }
+  .grp.icon-only { padding: 10px; border: 0; background: transparent; border-radius: 8px; margin-bottom: 2px; }
+  .grp.icon-only[aria-pressed="true"] { background: var(--accent-soft); box-shadow: none; }
+  .subs { gap: 2px; margin: 0 0 14px; }
+  .sub { border: 0; background: transparent; border-radius: 8px; padding: 6px 10px; font-weight: 500; font-size: 14px; }
+  .sub svg.i { width: 17px; height: 17px; }
+  .sub:hover { background: rgba(24, 58, 36, .06); }
+  .sub[aria-pressed="true"] { background: var(--accent-soft); color: var(--ink); border: 0; font-weight: 600; }
+  .sheet { background: rgba(255, 255, 255, .80); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+  .field { margin: 0 0 16px; }
+  .pg-bar { border-radius: 10px; padding: 3px; gap: 2px; margin: 0 0 12px; background: rgba(255, 255, 255, .9); }
+  .pg-bar .pg-sum { font-weight: 500; font-size: 13px; }
+  .ib { border-radius: 8px; width: 36px; height: 36px; }
+  .ib svg.i { width: 19px; height: 19px; }
+  .pagegrid { grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 12px; }
+  .pg { border-radius: 8px; padding: 6px 6px 8px; background: rgba(255, 255, 255, .6); }
+  .pg .pos { font-size: 13px; }
+  .ucard { border-radius: 10px; background: rgba(255, 255, 255, .6); }
+  .btn, .pill { border-radius: 10px; }
+  .btn.primary { padding: 10px 22px; font-size: 15px; font-weight: 650; }
+  .runrow { margin-top: 4px; }
+  .banner { border-radius: 12px; padding: 16px 18px; }
+  .preset, .tile { border-radius: 10px; }
+  input[type=text], input[type=number], input[type=password], select { border-radius: 8px; }
+  .grp span { white-space: nowrap; }
+  /* screens made only of cards (pages, documents) sit directly on the background; forms keep a panel */
+  .sheet:has(.pg-bar), .sheet:has(.ucards):not(:has(input)):not(:has(select)):not(:has(.presets)) { background: transparent; border: 0; padding: 0; }
+  .sheet:has(.pg-bar) .runrow, .sheet:has(.ucards):not(:has(input)):not(:has(.presets)) .runrow { margin-top: 14px; }
 </style>
 </head>
 <body>
@@ -377,7 +429,7 @@
 <div class="app">
   <aside class="rail" aria-label="Your documents">
     <div class="brand"><span class="mark"><svg class="i" viewBox="0 0 24 24" style="width:18px;height:18px"><use href="#i-compress"/></svg></span><b>pdf<span>squeeze</span></b></div>
-    <div class="offline" title="Files are processed on this computer and never uploaded.">Offline. Files never leave this computer.</div>
+    <div class="offline" title="Files are processed on this computer and never uploaded.">Offline. Nothing is uploaded.</div>
     <h2>Documents</h2>
     <ul class="docs" id="docs"></ul>
     <p class="norail" id="norail">Nothing here yet.</p>
@@ -602,7 +654,6 @@ function renderTask(v) {
   const multi = fk && props[fk].type === "array";
   const chosen = files.filter((f) => selected.has(f.id));
   let html = `${toolbarHtml()}
-    <div class="task-head"><div><h1>${esc(TITLE[current.name] || current.name)}</h1><p>${esc(BLURB[current.name] || current.description)}</p></div></div>
     <div class="result top" id="result" aria-live="polite"></div>
     <div class="sheet"><form id="form" autocomplete="off" onsubmit="return false">`;
 
@@ -632,9 +683,7 @@ function renderTask(v) {
         <div class="ucards${isMerge && list.length > 1 ? " sortable" : ""}">${cards}${addCard}</div>
         ${isMerge && list.length > 1 ? `<div class="hint">Result: ${plural(pages, "page")} from ${list.length} documents. Use the cross on a card to remove it.</div>` : ""}</div>`;
     } else {
-      // One document: the list on the left already says which. Only mention it when there is a choice.
-      const doc = files.find((f) => f.id === activeId());
-      if (doc && files.length > 1) html += `<div class="field"><div class="hint" style="margin:0">Working on <b>${esc(doc.name)}</b></div></div>`;
+      // One document: the list on the left already marks the one in use.
     }
   }
 
@@ -654,9 +703,8 @@ function renderTask(v) {
       <div class="hint">${current.name === "unlock" ? "Leave blank if the file only has editing restrictions." : "Keep it somewhere safe: it cannot be recovered."}</div></div>`;
   }
   if (current.name === GRID_TOOL) {
-    html += `<div class="field"><span class="lbl">Pages</span>
-      <div class="hint" style="margin:0 0 10px">Click pages to select them (Shift-click for a range), then use the icons. Drag a page, or a selection, to move it.</div>
-      <div class="pg-bar" id="pgbar" hidden role="toolbar" aria-label="Page actions">
+    html += `<div class="field">
+      <div class="pg-bar" id="pgbar" hidden role="toolbar" aria-label="Page actions" title="Click pages to select them (Shift-click for a range), then use the icons. Drag a page, or a selection, to move it.">
         <button class="ib" type="button" data-pgact="selall" title="Select all pages" aria-label="Select all pages"><svg class="i"><use href="#i-selall"/></svg></button>
         <button class="ib" type="button" data-pgact="selnone" title="Clear selection" aria-label="Clear selection"><svg class="i"><use href="#i-selnone"/></svg></button>
         <span class="sep" aria-hidden="true"></span>
@@ -672,7 +720,7 @@ function renderTask(v) {
   html += main.map((k) => fieldHtml(k, props[k], required.has(k))).join("");
   if (extra.length) html += `<details class="more"><summary>More options</summary><div class="inner">${extra.map((k) => fieldHtml(k, props[k], false)).join("")}</div></details>`;
 
-  html += `<div class="runrow"><button class="btn primary" id="run" type="button" ${running ? "disabled" : ""}>${running ? "Working…" : "Run " + esc((TITLE[current.name] || "").toLowerCase())}</button>
+  html += `<div class="runrow"><button class="btn primary" id="run" type="button" ${running ? "disabled" : ""}>${running ? "Working…" : esc(TITLE[current.name] || "Run")}</button>
       ${running ? '<div class="progwrap"><span class="progress" id="pbar" role="progressbar" aria-label="Progress" aria-valuemin="0" aria-valuemax="100"><i></i></span><div class="proglabel"><span id="plabel">Starting…</span><b id="ppct"></b></div></div>' : ""}</div></form></div>`;
   v.innerHTML = html;
   if (result) renderResult();
@@ -797,10 +845,14 @@ function layoutPages(focusPage) {
   const k = pg.sel.size;
   const sum = document.getElementById("pgsum");
   if (sum) {
-    const parts = [k ? `${k} selected` : "None selected", `${pos} of ${pg.count} kept`];
-    if (removed) parts.push(`${removed} removed`);
-    if (turned) parts.push(`${turned} turned`);
-    sum.textContent = parts.join(" · ");
+    const changed = removed || turned || pg.order.some((n, i) => n !== i + 1);
+    if (!k && !changed) sum.textContent = `${pg.count} ${pg.count === 1 ? "page" : "pages"} · click to select, drag to move`;
+    else {
+      const parts = [k ? `${k} selected` : `${pos} of ${pg.count} kept`];
+      if (k && removed) parts.push(`${removed} removed`);
+      if (turned) parts.push(`${turned} turned`);
+      sum.textContent = parts.join(" · ");
+    }
   }
   document.querySelectorAll("#pgbar [data-pgact]").forEach((b) => {
     const a = b.dataset.pgact;
