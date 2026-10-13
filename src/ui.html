@@ -202,6 +202,24 @@
   pre.raw { background: var(--bg); padding: 12px; border-radius: 10px; overflow: auto; font-size: 12.5px; max-height: 220px; margin: 12px 0 0; }
 
 
+  /* ---- toolbar: clubbed tools ---- */
+  .toolbar { display: flex; gap: 10px; align-items: center; justify-content: space-between; margin: 0 0 12px; }
+  .grps { display: flex; gap: 6px; flex-wrap: wrap; background: var(--rail); border: 1px solid var(--line); border-radius: 14px; padding: 5px; min-width: 0; }
+  .grp { display: inline-flex; align-items: center; gap: 8px; border: 0; background: transparent; color: var(--muted); padding: 9px 14px; border-radius: 10px; cursor: pointer; font-weight: 650; }
+  .grp:hover { color: var(--ink); }
+  .grp[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+  .grp:focus-visible, .sub:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .grp.icon-only { padding: 9px; border: 1px solid var(--line); background: var(--rail); border-radius: 12px; }
+  .grp.icon-only[aria-pressed="true"] { background: var(--accent); }
+  .subs { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 20px; }
+  .sub { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); padding: 8px 13px; border-radius: 999px; cursor: pointer; font-weight: 600; }
+  .sub svg.i { width: 18px; height: 18px; }
+  .sub:hover { color: var(--ink); border-color: var(--faint); }
+  .sub[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); border-color: var(--accent); }
+  @media (max-width: 760px) { .grp span { display: none; } .grp { padding: 10px 13px; } }
+  .task-head { margin: 0 0 16px; }
+  .task-head h1 { font-size: 22px; }
+
   /* ---- page grid (reorder) ---- */
   .pg-bar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 0 0 12px; }
   .pg-bar .btn { padding: 7px 13px; font-size: 14px; }
@@ -295,11 +313,11 @@ const TOKEN = new URLSearchParams(location.search).get("t") || "";
 const GRID_TOOL = "organize";
 
 const CATS = [
-  { id: "shrink", label: "Shrink and fix", tools: ["compress", "repair", "check", "linearize", "pdfa"] },
-  { id: "pages", label: "Pages", tools: ["organize", "merge", "split", "extract"] },
-  { id: "convert", label: "Convert", tools: ["to_images", "images_to_pdf", "text", "ocr"] },
-  { id: "secure", label: "Protect and clean", tools: ["protect", "unlock", "strip_metadata", "info"] },
-  { id: "stamp", label: "Stamp", tools: ["watermark", "number_pages"] },
+  { id: "shrink", icon: "compress", label: "Shrink and fix", tools: ["compress", "repair", "check", "linearize", "pdfa"] },
+  { id: "pages", icon: "organize", label: "Pages", tools: ["organize", "merge", "split", "extract"] },
+  { id: "convert", icon: "to_images", label: "Convert", tools: ["to_images", "images_to_pdf", "text", "ocr"] },
+  { id: "secure", icon: "protect", label: "Protect and clean", tools: ["protect", "unlock", "strip_metadata", "info"] },
+  { id: "stamp", icon: "watermark", label: "Stamp", tools: ["watermark", "number_pages"] },
 ];
 const TITLE = {
   compress: "Compress", repair: "Repair", check: "Check for problems", linearize: "Fast web view", pdfa: "Archive as PDF/A",
@@ -416,8 +434,10 @@ window.native = { filesChanged: refreshFiles, dragging: (on) => veil.classList.t
 /* ---------- views ---------- */
 function render() {
   const v = $("view");
-  if (current) { renderTask(v); return; }
-  renderHome(v);
+  if (!files.length && !(current && current.name === "doctor")) { renderEmpty(v); return; }
+  if (!current) current = tools.find((t) => t.name === "organize") || tools[0] || null;
+  if (!current) { v.innerHTML = ""; return; }
+  renderTask(v);
 }
 
 function sheetArt() {
@@ -432,25 +452,26 @@ function sheetArt() {
   </svg>`;
 }
 
-function renderHome(v) {
-  const byName = Object.fromEntries(tools.map((t) => [t.name, t]));
-  const empty = files.length === 0;
-  let head;
-  if (empty) {
-    head = `<div class="hero empty">${sheetArt()}
+function renderEmpty(v) {
+  v.innerHTML = `<div class="hero empty">${sheetArt()}
       <h1>Drop a PDF to get started</h1>
-      <p>Compress, merge, convert, make scans searchable and more. It all happens on this computer, and nothing is uploaded.</p>
-      <div style="margin-top:14px"><button class="btn primary" id="choose" type="button">Choose files</button></div></div>`;
-  } else {
-    const use = selected.size ? plural(selected.size, "document") : "your documents";
-    head = `<div class="hero"><h1>What would you like to do?</h1><p>Using ${esc(use)}. Pick a document on the left to include or leave it out.</p></div>`;
-  }
-  const cats = CATS.map((c) => `<button class="cat" type="button" data-cat="${c.id}" aria-pressed="${c.id === cat}">${esc(c.label)}</button>`).join("");
-  const list = (CATS.find((c) => c.id === cat) || CATS[0]).tools.filter((n) => byName[n]);
-  const tiles = list.map((n) => `<button class="tile" type="button" data-tool="${n}">
-      <span class="ico">${ico(n)}</span><span><b>${esc(TITLE[n] || n)}</b><small>${esc(BLURB[n] || byName[n].description)}</small></span></button>`).join("");
-  v.innerHTML = `${head}<div class="cats" role="group" aria-label="Kinds of task">${cats}</div><div class="tiles">${tiles}</div>
+      <p>Organize pages, compress, convert, make scans searchable and more. It all happens on this computer, and nothing is uploaded.</p>
+      <div style="margin-top:14px"><button class="btn primary" id="choose" type="button">Choose files</button></div></div>
     <div class="foot"><span>Everything runs here. Close this window to stop.</span><button class="link" type="button" data-tool="doctor">${ico("doctor")} Check setup</button></div>`;
+}
+
+// Tools are clubbed into a few icon groups; picking a group shows its tools beside each other.
+function toolbarHtml() {
+  const have = new Set(tools.map((t) => t.name));
+  const group = CATS.find((c) => c.tools.includes(current.name)) || null;
+  if (group) cat = group.id;
+  const groups = CATS.map((c) => `<button class="grp" type="button" data-cat="${c.id}" aria-pressed="${!!group && c.id === group.id}" title="${esc(c.label)}">
+      ${ico(c.icon)}<span>${esc(c.label)}</span></button>`).join("");
+  const subs = group ? group.tools.filter((n) => have.has(n)).map((n) => `<button class="sub" type="button" data-tool="${n}" aria-pressed="${n === current.name}" title="${esc(BLURB[n] || "")}">
+      ${ico(n)}<span>${esc(TITLE[n] || n)}</span></button>`).join("") : "";
+  return `<div class="toolbar"><nav class="grps" aria-label="Tool groups">${groups}</nav>
+      <button class="grp icon-only" type="button" data-tool="doctor" aria-pressed="${current.name === "doctor"}" title="Check setup" aria-label="Check setup">${ico("doctor")}</button></div>
+    ${subs ? `<nav class="subs" aria-label="${esc(group.label)} tools">${subs}</nav>` : ""}`;
 }
 
 function fileArgKey() { return Object.keys(current.input_schema.properties || {}).find((k) => FILE_ARGS.has(k)); }
@@ -461,8 +482,8 @@ function renderTask(v) {
   const fk = fileArgKey();
   const multi = fk && props[fk].type === "array";
   const chosen = files.filter((f) => selected.has(f.id));
-  let html = `<button class="link" type="button" id="back">${ico("back")} All tools</button>
-    <div class="task-head"><span class="ico">${ico(current.name)}</span><div><h1>${esc(TITLE[current.name] || current.name)}</h1><p>${esc(BLURB[current.name] || current.description)}</p></div></div>
+  let html = `${toolbarHtml()}
+    <div class="task-head"><div><h1>${esc(TITLE[current.name] || current.name)}</h1><p>${esc(BLURB[current.name] || current.description)}</p></div></div>
     <div class="result top" id="result" aria-live="polite"></div>
     <div class="sheet"><form id="form" autocomplete="off" onsubmit="return false">`;
 
@@ -529,11 +550,16 @@ function fieldHtml(key, p, required) {
 
 $("view").addEventListener("click", (e) => {
   const c = e.target.closest("[data-cat]");
-  if (c) { cat = c.dataset.cat; render(); return; }
+  if (c) {
+    if (running) return;
+    const g = CATS.find((x) => x.id === c.dataset.cat);
+    const first = g && g.tools.find((n) => tools.some((t) => t.name === n));
+    if (first) openTool(first);
+    return;
+  }
   const t = e.target.closest("[data-tool]");
-  if (t) { openTool(t.dataset.tool); return; }
+  if (t) { if (!running) openTool(t.dataset.tool); return; }
   if (e.target.closest("#choose")) { picker.click(); return; }
-  if (e.target.closest("#back")) { current = null; result = null; saved = {}; render(); return; }
   const p = e.target.closest("[data-preset]");
   if (p) { preset = p.dataset.preset; document.querySelectorAll("[data-preset]").forEach((b) => b.setAttribute("aria-pressed", String(b === p))); return; }
   if (e.target.closest("#run")) { run(); return; }
@@ -544,7 +570,6 @@ $("view").addEventListener("click", (e) => {
   const o = e.target.closest("[data-open]");
   if (o) { post("/api/open", { path: o.dataset.open }); return; }
 });
-window.addEventListener("keydown", (e) => { if (e.key === "Escape" && current && !running) { current = null; result = null; saved = {}; render(); } });
 
 function openTool(name) {
   current = tools.find((t) => t.name === name); result = null; saved = {}; preset = "recommended"; pg = newPg(null); render();

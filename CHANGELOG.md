@@ -1,0 +1,51 @@
+# Changelog
+
+Plain-language record of what pdfsqueeze can do and how well that has been checked. Newest first.
+"Verified" says how: by automated test, by CI on a real runner, or by hand.
+
+## Unreleased (work since the 2026-10-10 CI run; not yet on GitHub)
+
+### Added
+- **Organize pages**: one screen for reordering, rotating and deleting pages. Real page
+  previews, drag to move, buttons to turn or remove a page, keyboard shortcuts (arrows to move,
+  R to turn, Delete to remove). Also a command: `pdfsqueeze organize book.pdf --order 3,1,2 --rotate 1:90`.
+  *Verified:* output order and rotations checked against the produced file; 2 new smoke checks
+  and 1 unit test. Drag and buttons exercised in a browser tab, **not** yet by hand in the app window.
+- **Real progress bar**: shows pages processed, compression attempts and files finished, with a
+  percentage, for compress, OCR, PDF to images, text extraction and batch compress. Other tasks
+  are near-instant and show an animated bar without a number. *Verified:* a 40-page file reported
+  22%, 52%, 82%, 100% against real page numbers.
+- **Grouped tools**: the window now groups related tools under five icons (Shrink and fix,
+  Pages, Convert, Protect and clean, Stamp) with the tools of the active group shown beside each
+  other, instead of a menu of separate pages. *Verified:* in a browser tab only.
+- Page previews for **Reorder pages** use real renders of every page (up to 200 pages).
+
+### Checked
+- 51 unit tests and 50 end-to-end smoke checks pass on macOS (Apple Silicon).
+
+## 2026-10-10: app window and downloads built
+
+### Added
+- A real application window (not a browser tab) with a redesigned interface, a macOS menu bar,
+  light and dark themes, drag-and-drop of files, and Save to Downloads that never overwrites.
+- Packages for macOS (Apple Silicon and Intel), Windows (64-bit and 32-bit) and Linux (x86_64
+  and arm64), each with the engines bundled so nothing else needs installing.
+  *Verified in CI on real runners:* all six build and pass the end-to-end smoke test (Windows
+  32-bit without OCR, because the OCR engine has no 32-bit build).
+- Agent mode: every command can print one JSON object, never prompts, uses stable exit and error
+  codes, and `pdfsqueeze mcp` serves the tools to AI assistants over MCP (folder allow-list required).
+
+### Not yet checked
+- The Windows window has compiled in CI but nobody has opened it on a Windows machine.
+- The one-line installers for Linux and Windows have not been run; no release exists yet.
+- Dropping a file from Finder or Explorer onto the window, and the keyboard shortcuts, were not
+  tested by hand.
+- No code signing: macOS packages are ad-hoc signed; Windows packages are unsigned.
+
+## 2026-10-09: engine and command line
+
+- 22 commands: compress (presets, DPI, size target, batch), merge, split, extract, delete,
+  reorder, rotate, PDF to images, images to PDF, text extraction, OCR, password protect and
+  unlock, metadata removal, info, watermark, page numbers, repair, check, fast web view, PDF/A.
+- Runs entirely on the user's machine; engines are Ghostscript, qpdf and Tesseract.
+- Licence AGPL-3.0 (Ghostscript requires it). Free and open source, nothing paid.

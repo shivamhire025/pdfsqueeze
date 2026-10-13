@@ -7,7 +7,7 @@ only written and never run, it says so.
 - **Last updated:** 2026-10-10.
 - **Git state:** at the time of writing `origin/main` was `4eef85d` and everything after it was
   local only (the verified-status docs, the desktop window and redesigned UI, and this file).
-  **Check the real state with `git log --oneline origin/main..HEAD`** rather than trusting this
+  **Check the real state with `git log --oneline origin/main..HEAD`** (as of 2026-10-13 four commits were local only: reorder previews, progress bar, organize, workspace) rather than trusting this
   line. Pushing triggers CI, which needs the owner's go-ahead.
 - **Repo:** https://github.com/shivamhire025/pdfsqueeze (public, AGPL-3.0)
 - **Local path:** `~/Projects/pdfsqueeze/` (the Obsidian vault only holds notes about it:
@@ -121,6 +121,7 @@ To test a package the way a user gets it (engines out of reach):
 - Double-click launch: no arguments opens the window; Windows needs the GUI subsystem or
   `FreeConsole` so no terminal appears. App icon, `.app` bundle, Windows installer.
 - Progress bar is real for compress (pages, attempts), OCR (checking, pages, assembling), to-images, text and batch compress (files); other commands are quick and show an animated bar with no percentage. Source: `src/progress.rs`, polled via `/api/progress`.
+- Tools are grouped under five icons (organize/merge/split/extract; compress/repair/check/linearize/pdfa; images/text/ocr; protect/unlock/metadata/info; watermark/numbers) in one workspace, and `organize` replaces the separate delete/reorder/rotate screens (the CLI commands remain). Check in the real window.
 - Native open and Save-As dialogs; reorder documents for merge (page reorder with real thumbnails and drag is done: verified in a browser with a synthetic mouse drag, **not** in the native window with a real hand); OCR progress in the window.
 - Verify native file drop and keyboard shortcuts on macOS and Windows with a person.
 - Test with real documents (scans, very large files, encrypted input, CJK).
