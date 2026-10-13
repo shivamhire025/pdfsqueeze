@@ -6,6 +6,12 @@ Plain-language record of what pdfsqueeze can do and how well that has been check
 ## Unreleased (work since the 2026-10-10 CI run; not yet on GitHub)
 
 ### Added
+- **Landing page** (`docs/index.html`): headline "Stop uploading your PDFs to the internet", a
+  product mock-up built from real page previews, the privacy facts, the feature set, the
+  agent/MCP section, per-platform downloads with a best-effort match for the visitor's computer,
+  one-line installers with copy buttons, and a progress log with what is and is not checked yet.
+  No external requests, no analytics. *Verified:* desktop and phone widths in a browser tab, no
+  horizontal overflow. Download buttons are held on the Releases page until a release exists.
 - **Save all for many results**: PDF to images and Split now show a small preview strip and one
   "Save all N images" button that puts everything into a single new folder in Downloads
   (never overwriting), then "Open folder". The per-file buttons are gone for multi-file results.

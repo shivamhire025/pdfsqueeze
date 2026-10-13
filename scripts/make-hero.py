@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
 """Generates assets/hero.jpg: a long archive corridor of paper-filled shelves, light and sage green.
 
-Original artwork made from code, so there is no licence to carry. To use a real
+Original artwork made from code, so there is no licence to carry.
+Usage: make-hero.py [output.jpg]   (default assets/hero.jpg). To use a real
 photograph instead, replace assets/hero.jpg (2400x1350 works well; keep it under
 about 400 KB) and rebuild. Needs Pillow and numpy.
 """
-import math, random
+import math, random, sys
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 
 W, H = 2400, 1350
+OUT = sys.argv[1] if len(sys.argv) > 1 else "assets/hero.jpg"   # pass a path to avoid replacing the app background
 random.seed(11)
 HZ = int(H * 0.56)          # horizon
 VX = int(W * 0.58)          # vanishing point (corridor runs off to the right of centre)
@@ -111,5 +113,5 @@ light = 252.0 - (255.0 - lum) * 0.36
 tint = np.array([0.80, 0.97, 0.78])[None, None, :]   # sage: pull red and blue down, keep green
 out = 255.0 - (255.0 - light) * (1.0 + (1.0 - tint) * 2.4)
 Image.fromarray(np.clip(out, 0, 255).astype(np.uint8)).save(
-    "assets/hero.jpg", quality=64, optimize=True, progressive=True, subsampling="4:2:0")
-print("wrote assets/hero.jpg")
+    OUT, quality=64, optimize=True, progressive=True, subsampling="4:2:0")
+print("wrote", OUT)
