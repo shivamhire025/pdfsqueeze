@@ -4,10 +4,10 @@
 Everything here was checked against the repo, CI and the machine on the date below. Where
 something was only written and never run, it says so.
 
-- **Last updated:** 2026-10-13 (end of day; security review fixes added, see CHANGELOG "Security" and SECURITY.md).
+- **Last updated:** 2026-10-13 (night; security fixes, dry runs, installer tests, icon).
 - **Git state:** do not trust a number written here. Run `git status -sb` and
-  `git log --oneline origin/main..HEAD`. On 2026-10-13 the tree was clean with **42 commits, 2 not
-  pushed**: `19a945c` (sentence-case headline) and `6053d1b` (double-click launch and the Mac app).
+  `git log --oneline origin/main..HEAD`. On 2026-10-13 (night) the tree was clean and **1 docs-only
+  commit (`d7acef3`) was not pushed**; everything else, through `2e8b3c6`, is on GitHub.
 - **Repo:** https://github.com/shivamhire025/pdfsqueeze (public, AGPL-3.0)
 - **Live landing page:** https://shivamhire025.github.io/pdfsqueeze/ (GitHub Pages, branch `main`,
   folder `/docs`). It shows the last *pushed* version.
@@ -79,16 +79,19 @@ JavaScript. Add `&splash=hold` to keep the opening splash on screen.
 
 ## What to do next (each step needs the owner's go-ahead; see "Working rules")
 
-1. **Push** the 2 local commits (runs the free CI once, about 5 minutes).
-2. **Release dry run**: `gh workflow run release.yml` (manual dispatch, publishes nothing). It now
-   builds the six packages plus `pdfsqueeze-macos-<arch>.app.zip` for both Macs and smoke-tests
-   the app. Free on a public repo; budget 20 to 40 minutes; watch it and cancel past about twice
-   that. Fix whatever it finds (the app path has never run in CI).
-3. **Installers**: DONE 2026-10-13 against dry-run packages (`gh workflow run installers.yml -f run_id=<release run id>`); only the real release URL is untested.
-4. **Tag**: `git tag v0.1.0 && git push origin v0.1.0` publishes the files to a GitHub Release.
-5. **Page**: set `RELEASE_READY = true` near the bottom of `docs/index.html` and push (Pages
+Done 2026-10-13: security review and fixes (see `SECURITY.md`, CHANGELOG "Security"); pushed; CI green
+(run 38492879045); release dry run all six packages green (run 38492887452); installers tested in
+CI (run 38493915273); taskbar/Dock icon added (appearance not yet looked at by a person).
+
+1. **Owner decisions first** (he said "we'll do this later"): photographers' names for `CREDITS.md`;
+   wording of the Gatekeeper/SmartScreen first-launch notes; look at the Dock and taskbar icons.
+2. **Tag**: `git tag v0.1.0 && git push origin v0.1.0` publishes the files to a GitHub Release
+   (public and not quietly reversible; also the first real run of the `publish` job; ~8 minutes, free).
+3. **Page**: set `RELEASE_READY = true` near the bottom of `docs/index.html` and push (Pages
    redeploys; GitHub caches about 10 minutes, so add a `?v=` query when checking).
-6. Then the backlog below.
+4. Re-run `installers.yml` against the real release URL (`gh workflow run installers.yml -f run_id=...`
+   uses dry-run artifacts; after the tag also try the one-liners from a clean machine).
+5. Then the backlog below.
 
 ## Where things are
 
@@ -189,7 +192,7 @@ owner's commit email is public in the history.
 
 ## Open questions for the owner
 
-- Push the local commits (incl. the security fixes) and start the release dry run? The dry run will be the first time the pinned downloads, the read-only token and the new `publish` job actually run, so expect to fix small things.
+- Tag `v0.1.0` now, or wait for the owner's own look at the app first? (He deferred: "we'll do this later".)
 - Apply for SignPath Foundation (free Windows signing), or ship Windows unsigned for now?
 - Wording of the first-launch notes (Gatekeeper, SmartScreen) on the page.
 - Add the photographers' names to `CREDITS.md`.
