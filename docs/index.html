@@ -254,22 +254,22 @@
 <header class="bar"><div class="wrap">
   <a class="logo" href="#top"><i><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-compress"/></svg></i>pdfsqueeze</a>
   <nav aria-label="Sections">
-    <a href="#highlights">Highlights</a><a href="#screens">Screens</a><a href="#get">Get it</a><a href="#agents">Agents</a><a href="#progress">Progress</a>
+    <a href="#get">Get it</a><a href="#highlights">Highlights</a><a href="#screens">Screens</a><a href="#agents">Agents</a><a href="#progress">Progress</a>
   </nav>
   <a class="btn solid sm go" href="#get">Get it</a>
 </div></header>
 
 <aside class="index" aria-label="On this page">
+  <a href="#get" data-s="get">Get it</a>
   <a href="#highlights" data-s="highlights">Highlights</a>
   <a href="#screens" data-s="screens">Screenshots</a>
-  <a href="#get" data-s="get">Get it</a>
   <a href="#agents" data-s="agents">For agents</a>
   <a href="#progress" data-s="progress">Progress</a>
 </aside>
 
 <main id="top">
 <section class="hero"><div class="frame">
-  <div class="top mono"><span>01 / pdfsqueeze</span><b>PDFSQUEEZE</b></div>
+  <div class="top mono"><span>01 / pdfsqueeze</span></div>
   <div class="hero-body"><div>
     <div class="app-icon"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-compress"/></svg></div>
     <div class="chip"><i>01</i><span>pdf<span>squeeze</span></span></div>
@@ -303,8 +303,45 @@
   <div class="foot mono"><span>Mac · Windows · Linux</span><span>No account · No tracking</span></div>
 </div></section>
 
+<section class="s" id="get"><div class="wrap">
+  <div class="s-head mono"><span>02 / get pdfsqueeze</span></div>
+  <div class="s-body">
+    <h2>One download. <em>Nothing else to install.</em></h2>
+    <p class="sub">Free, with no account. The tools it needs are built in, and there is no installer or admin password.</p>
+    <div class="soon" role="status">The first public release is being prepared. These buttons will start working the moment it is published; until then they open the project's releases page.</div>
+    <div class="cols" id="dl">
+      <div class="col" data-os="mac"><svg class="glyph" viewBox="0 0 240 118" aria-hidden="true"><use href="#lap" x="60" y="8" width="120" height="84"/><g transform="translate(103 24) scale(1.4)" fill="none" stroke="#86cd78" stroke-width="2" stroke-linecap="round"><path d="M4 9h5V4M20 9h-5V4M4 15h5v5M20 15h-5v5" transform="scale(.9)"/></g><rect x="20" y="100" width="200" height="3" rx="1.5" fill="#86cd78" opacity=".25"/></svg>
+        <h3>macOS</h3><p class="desc">Unzip and double-click pdfsqueeze. Apple Silicon and Intel Macs.</p>
+        <a class="btn solid block" data-file="pdfsqueeze-macos-arm64.app.zip" href="#"><svg class="ic dl-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg>Apple Silicon</a>
+        <div class="other mono">Other files for macOS</div>
+        <a class="row" data-file="pdfsqueeze-macos-x86_64.app.zip" href="#"><b>Intel Macs</b><svg class="ic dl-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg><span class="d">Needs macOS 15 or later.</span><code>pdfsqueeze-macos-x86_64.app.zip</code></a>
+        <a class="row" data-file="pdfsqueeze-macos-arm64.tar.gz" href="#"><b>Command-line tool</b><svg class="ic dl-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg><span class="d">The same program as a folder, for scripts and agents. Also what the installer uses.</span><code>pdfsqueeze-macos-arm64.tar.gz</code></a>
+      </div>
+      <div class="col" data-os="windows"><svg class="glyph" viewBox="0 0 240 118" aria-hidden="true"><rect x="62" y="10" width="116" height="84" rx="9" fill="#132119" stroke="#9fb5a6" stroke-width="2"/><g fill="#86cd78"><rect x="84" y="28" width="32" height="22" rx="3"/><rect x="124" y="28" width="32" height="22" rx="3" opacity=".7"/><rect x="84" y="56" width="32" height="22" rx="3" opacity=".7"/><rect x="124" y="56" width="32" height="22" rx="3"/></g><rect x="20" y="100" width="200" height="3" rx="1.5" fill="#86cd78" opacity=".25"/></svg>
+        <h3>Windows</h3><p class="desc">Unzip and double-click pdfsqueeze.exe. Windows 10 and 11, 64-bit, with OCR.</p>
+        <a class="btn solid block" data-file="pdfsqueeze-windows-x64.zip" href="#"><svg class="ic dl-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg>Portable, 64-bit</a>
+        <div class="other mono">Other files for Windows</div>
+        <a class="row" data-file="pdfsqueeze-windows-x86.zip" href="#"><b>Portable, 32-bit</b><svg class="ic dl-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg><span class="d">Older 32-bit Windows. No OCR in this build.</span><code>pdfsqueeze-windows-x86.zip</code></a>
+        <a class="row" data-file="pdfsqueeze-windows-x64.zip" href="#"><b>Command-line tool</b><svg class="ic dl-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg><span class="d">The same download: also runs headless.</span><code>pdfsqueeze-windows-x64.zip</code></a>
+      </div>
+      <div class="col" data-os="linux"><svg class="glyph" viewBox="0 0 240 118" aria-hidden="true"><rect x="52" y="10" width="136" height="84" rx="9" fill="#0c1711" stroke="#9fb5a6" stroke-width="2"/><circle cx="68" cy="24" r="3" fill="#86cd78"/><circle cx="80" cy="24" r="3" fill="#9fb5a6" opacity=".5"/><path d="M70 46l12 9-12 9" fill="none" stroke="#86cd78" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><rect x="92" y="62" width="34" height="4" rx="2" fill="#86cd78"/><rect x="70" y="76" width="64" height="3" rx="1.5" fill="#9fb5a6" opacity=".4"/><rect x="20" y="100" width="200" height="3" rx="1.5" fill="#86cd78" opacity=".25"/></svg>
+        <h3>Linux</h3><p class="desc">Any distro with glibc 2.35 or newer (Ubuntu 22.04+).</p>
+        <a class="btn solid block" data-file="pdfsqueeze-linux-x86_64.tar.gz" href="#"><svg class="ic dl-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg>Tarball, x86_64</a>
+        <div class="other mono">Other files for Linux</div>
+        <a class="row" data-file="pdfsqueeze-linux-arm64.tar.gz" href="#"><b>Tarball, arm64</b><svg class="ic dl-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg><span class="d">ARM servers and laptops.</span><code>pdfsqueeze-linux-arm64.tar.gz</code></a>
+        <a class="row" href="https://github.com/shivamhire025/pdfsqueeze"><b>Build from source</b><svg class="ic dl-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg><span class="d">Rust and the open source engines.</span><code>github.com/shivamhire025/pdfsqueeze</code></a>
+      </div>
+    </div>
+    <div class="install">
+      <div class="cmd"><code id="c1">curl -fsSL https://raw.githubusercontent.com/shivamhire025/pdfsqueeze/main/install.sh | sh</code><small class="mono">macOS · Linux</small><button data-copy="c1">Copy</button></div>
+      <div class="cmd"><code id="c2">irm https://raw.githubusercontent.com/shivamhire025/pdfsqueeze/main/install.ps1 | iex</code><small class="mono">Windows</small><button data-copy="c2">Copy</button></div>
+    </div>
+    <p class="note"><b>First launch.</b> The apps are not code-signed yet (signing costs money, and this project is free). On a Mac, if it says the developer cannot be verified, open System Settings, Privacy &amp; Security and choose Open Anyway. On Windows choose More info, then Run anyway. The one-line installers above avoid both prompts and need no password or administrator rights.</p>
+  </div>
+</div></section>
+
 <section class="s" id="highlights"><div class="wrap">
-  <div class="s-head mono"><span>02 / highlights</span><b>HIGHLIGHTS</b></div>
+  <div class="s-head mono"><span>03 / highlights</span></div>
   <div class="s-body">
     <h2>Everything you do to a PDF, <em>in one window.</em></h2>
     <p class="sub">The tools you reach for most, grouped the way you think about them, and none of it leaves your machine.</p>
@@ -362,7 +399,7 @@
 </div></section>
 
 <section class="s" id="screens"><div class="wrap">
-  <div class="s-head mono"><span>03 / screenshots</span><b>SCREENSHOTS</b></div>
+  <div class="s-head mono"><span>04 / screenshots</span></div>
   <div class="s-body">
     <div class="tabs" role="tablist" aria-label="Screens">
       <button role="tab" aria-selected="true" data-tab="organize">Organize pages</button>
@@ -421,45 +458,9 @@
   </div>
 </div></section>
 
-<section class="s" id="get"><div class="wrap">
-  <div class="s-head mono"><span>04 / get pdfsqueeze</span><b>GET IT</b></div>
-  <div class="s-body">
-    <h2>One download. <em>Nothing else to install.</em></h2>
-    <p class="sub">Free, with no account. The tools it needs are built in, and there is no installer or admin password.</p>
-    <div class="soon" role="status">The first public release is being prepared. These buttons will start working the moment it is published; until then they open the project's releases page.</div>
-    <div class="cols" id="dl">
-      <div class="col" data-os="mac"><svg class="glyph" viewBox="0 0 240 118" aria-hidden="true"><use href="#lap" x="60" y="8" width="120" height="84"/><g transform="translate(103 24) scale(1.4)" fill="none" stroke="#86cd78" stroke-width="2" stroke-linecap="round"><path d="M4 9h5V4M20 9h-5V4M4 15h5v5M20 15h-5v5" transform="scale(.9)"/></g><rect x="20" y="100" width="200" height="3" rx="1.5" fill="#86cd78" opacity=".25"/></svg>
-        <h3>macOS</h3><p class="desc">Unzip and double-click pdfsqueeze. Apple Silicon and Intel Macs.</p>
-        <a class="btn solid block" data-file="pdfsqueeze-macos-arm64.app.zip" href="#"><svg class="ic dl-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg>Apple Silicon</a>
-        <div class="other mono">Other files for macOS</div>
-        <a class="row" data-file="pdfsqueeze-macos-x86_64.app.zip" href="#"><b>Intel Macs</b><svg class="ic dl-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg><span class="d">Needs macOS 15 or later.</span><code>pdfsqueeze-macos-x86_64.app.zip</code></a>
-        <a class="row" data-file="pdfsqueeze-macos-arm64.tar.gz" href="#"><b>Command-line tool</b><svg class="ic dl-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg><span class="d">The same program as a folder, for scripts and agents. Also what the installer uses.</span><code>pdfsqueeze-macos-arm64.tar.gz</code></a>
-      </div>
-      <div class="col" data-os="windows"><svg class="glyph" viewBox="0 0 240 118" aria-hidden="true"><rect x="62" y="10" width="116" height="84" rx="9" fill="#132119" stroke="#9fb5a6" stroke-width="2"/><g fill="#86cd78"><rect x="84" y="28" width="32" height="22" rx="3"/><rect x="124" y="28" width="32" height="22" rx="3" opacity=".7"/><rect x="84" y="56" width="32" height="22" rx="3" opacity=".7"/><rect x="124" y="56" width="32" height="22" rx="3"/></g><rect x="20" y="100" width="200" height="3" rx="1.5" fill="#86cd78" opacity=".25"/></svg>
-        <h3>Windows</h3><p class="desc">Unzip and double-click pdfsqueeze.exe. Windows 10 and 11, 64-bit, with OCR.</p>
-        <a class="btn solid block" data-file="pdfsqueeze-windows-x64.zip" href="#"><svg class="ic dl-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg>Portable, 64-bit</a>
-        <div class="other mono">Other files for Windows</div>
-        <a class="row" data-file="pdfsqueeze-windows-x86.zip" href="#"><b>Portable, 32-bit</b><svg class="ic dl-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg><span class="d">Older 32-bit Windows. No OCR in this build.</span><code>pdfsqueeze-windows-x86.zip</code></a>
-        <a class="row" data-file="pdfsqueeze-windows-x64.zip" href="#"><b>Command-line tool</b><svg class="ic dl-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg><span class="d">The same download: also runs headless.</span><code>pdfsqueeze-windows-x64.zip</code></a>
-      </div>
-      <div class="col" data-os="linux"><svg class="glyph" viewBox="0 0 240 118" aria-hidden="true"><rect x="52" y="10" width="136" height="84" rx="9" fill="#0c1711" stroke="#9fb5a6" stroke-width="2"/><circle cx="68" cy="24" r="3" fill="#86cd78"/><circle cx="80" cy="24" r="3" fill="#9fb5a6" opacity=".5"/><path d="M70 46l12 9-12 9" fill="none" stroke="#86cd78" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><rect x="92" y="62" width="34" height="4" rx="2" fill="#86cd78"/><rect x="70" y="76" width="64" height="3" rx="1.5" fill="#9fb5a6" opacity=".4"/><rect x="20" y="100" width="200" height="3" rx="1.5" fill="#86cd78" opacity=".25"/></svg>
-        <h3>Linux</h3><p class="desc">Any distro with glibc 2.35 or newer (Ubuntu 22.04+).</p>
-        <a class="btn solid block" data-file="pdfsqueeze-linux-x86_64.tar.gz" href="#"><svg class="ic dl-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg>Tarball, x86_64</a>
-        <div class="other mono">Other files for Linux</div>
-        <a class="row" data-file="pdfsqueeze-linux-arm64.tar.gz" href="#"><b>Tarball, arm64</b><svg class="ic dl-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg><span class="d">ARM servers and laptops.</span><code>pdfsqueeze-linux-arm64.tar.gz</code></a>
-        <a class="row" href="https://github.com/shivamhire025/pdfsqueeze"><b>Build from source</b><svg class="ic dl-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg><span class="d">Rust and the open source engines.</span><code>github.com/shivamhire025/pdfsqueeze</code></a>
-      </div>
-    </div>
-    <div class="install">
-      <div class="cmd"><code id="c1">curl -fsSL https://raw.githubusercontent.com/shivamhire025/pdfsqueeze/main/install.sh | sh</code><small class="mono">macOS · Linux</small><button data-copy="c1">Copy</button></div>
-      <div class="cmd"><code id="c2">irm https://raw.githubusercontent.com/shivamhire025/pdfsqueeze/main/install.ps1 | iex</code><small class="mono">Windows</small><button data-copy="c2">Copy</button></div>
-    </div>
-    <p class="note"><b>First launch.</b> The apps are not code-signed yet (signing costs money, and this project is free). On a Mac, if it says the developer cannot be verified, open System Settings, Privacy &amp; Security and choose Open Anyway. On Windows choose More info, then Run anyway. The one-line installers above avoid both prompts and need no password or administrator rights.</p>
-  </div>
-</div></section>
 
 <section class="s" id="agents"><div class="wrap">
-  <div class="s-head mono"><span>05 / for agents</span><b>FOR AGENTS</b></div>
+  <div class="s-head mono"><span>05 / for agents</span></div>
   <div class="s-body"><div class="two">
     <div>
       <h2>Built for <em>AI agents</em> too.</h2>
@@ -483,7 +484,7 @@
 </div></section>
 
 <section class="s" id="progress"><div class="wrap">
-  <div class="s-head mono"><span>06 / progress</span><b>PROGRESS</b></div>
+  <div class="s-head mono"><span>06 / progress</span></div>
   <div class="s-body">
     <h2>Built <em>in the open.</em></h2>
     <p class="sub">Here is what exists, and how well each part has been checked.</p>
