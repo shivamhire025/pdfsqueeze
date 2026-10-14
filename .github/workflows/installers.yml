@@ -1,0 +1,110 @@
+# Runs the one-line installers against packages built by an earlier release run
+# (a dry run is enough: nothing needs to be published). The package and its
+# .sha256 are served from a local web server, so the real download and checksum
+# code runs; a second, deliberately damaged copy must be refused.
+#
+# Start it by hand:  gh workflow run installers.yml -f run_id=<release run id>
+name: installers
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: "Release workflow run whose packages to install"
+        required: true
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: installers
+  cancel-in-progress: true
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  GH_REPO: ${{ github.repository }}
+
+jobs:
+  linux:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Fetch the package from the earlier run
+        run: gh run download "${{ inputs.run_id }}" --name pdfsqueeze-linux-x86_64 --dir good
+      - name: Make a damaged copy
+        run: |
+          mkdir bad && cp good/* bad/
+          printf x >> bad/pdfsqueeze-linux-x86_64.tar.gz
+      - name: Install from the good package
+        run: |
+          python3 -m http.server 8191 --directory good >/dev/null 2>&1 &
+          python3 -m http.server 8192 --directory bad >/dev/null 2>&1 &
+          sleep 2
+          PDFSQUEEZE_BASE_URL=http://127.0.0.1:8191 PDFSQUEEZE_HOME="$RUNNER_TEMP/pq" \
+            PDFSQUEEZE_BIN="$RUNNER_TEMP/bin" sh install.sh
+      - name: The damaged package must be refused
+        run: |
+          if PDFSQUEEZE_BASE_URL=http://127.0.0.1:8192 PDFSQUEEZE_HOME="$RUNNER_TEMP/pq2" \
+               PDFSQUEEZE_BIN="$RUNNER_TEMP/bin2" sh install.sh; then
+            echo "installer accepted a damaged package"; exit 1
+          fi
+          test ! -e "$RUNNER_TEMP/pq2"
+      - name: Re-install over the previous install, and refuse a foreign folder
+        run: |
+          PDFSQUEEZE_BASE_URL=http://127.0.0.1:8191 PDFSQUEEZE_HOME="$RUNNER_TEMP/pq" \
+            PDFSQUEEZE_BIN="$RUNNER_TEMP/bin" sh install.sh
+          mkdir "$RUNNER_TEMP/other" && echo keep > "$RUNNER_TEMP/other/file.txt"
+          if PDFSQUEEZE_BASE_URL=http://127.0.0.1:8191 PDFSQUEEZE_HOME="$RUNNER_TEMP/other" \
+               PDFSQUEEZE_BIN="$RUNNER_TEMP/bin3" sh install.sh; then
+            echo "installer replaced a folder that is not pdfsqueeze"; exit 1
+          fi
+          test -f "$RUNNER_TEMP/other/file.txt"
+      - name: The installed command works with no system engines
+        run: |
+          SMOKE_REQUIRE_BUNDLED=1 env -i HOME="$HOME" PATH=/usr/bin:/bin \
+            bash scripts/smoke.sh "$RUNNER_TEMP/bin/pdfsqueeze"
+
+  windows:
+    runs-on: windows-2022
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Fetch the package from the earlier run
+        shell: pwsh
+        run: gh run download "${{ inputs.run_id }}" --name pdfsqueeze-windows-x64 --dir good
+      - name: Make a damaged copy and start two local servers
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory bad | Out-Null
+          Copy-Item good/* bad/
+          [IO.File]::AppendAllText((Resolve-Path bad/pdfsqueeze-windows-x64.zip), "x")
+          Start-Process python -ArgumentList "-m","http.server","8191","--directory","good" -WindowStyle Hidden
+          Start-Process python -ArgumentList "-m","http.server","8192","--directory","bad" -WindowStyle Hidden
+          Start-Sleep 3
+      - name: Install from the good package
+        shell: pwsh
+        run: ./install.ps1 -BaseUrl http://127.0.0.1:8191 -Dir "$env:RUNNER_TEMP\pq"
+      - name: The damaged package must be refused
+        shell: pwsh
+        run: |
+          $refused = $false
+          try { ./install.ps1 -BaseUrl http://127.0.0.1:8192 -Dir "$env:RUNNER_TEMP\pq2" } catch { $refused = $true; Write-Host "refused: $($_.Exception.Message)" }
+          if (-not $refused) { throw "installer accepted a damaged package" }
+          if (Test-Path "$env:RUNNER_TEMP\pq2") { throw "a folder was created for the damaged package" }
+      - name: Re-install over the previous install, and refuse a foreign folder
+        shell: pwsh
+        run: |
+          ./install.ps1 -BaseUrl http://127.0.0.1:8191 -Dir "$env:RUNNER_TEMP\pq"
+          New-Item -ItemType Directory "$env:RUNNER_TEMP\other" | Out-Null
+          Set-Content "$env:RUNNER_TEMP\other\file.txt" keep
+          $refused = $false
+          try { ./install.ps1 -BaseUrl http://127.0.0.1:8191 -Dir "$env:RUNNER_TEMP\other" } catch { $refused = $true }
+          if (-not $refused) { throw "installer replaced a folder that is not pdfsqueeze" }
+          if (-not (Test-Path "$env:RUNNER_TEMP\other\file.txt")) { throw "foreign file was deleted" }
+      - name: The installed command works with no system engines
+        shell: bash
+        run: |
+          SMOKE_REQUIRE_BUNDLED=1 PATH="/usr/bin:/c/Windows/System32:/c/Windows" \
+            bash scripts/smoke.sh "$RUNNER_TEMP/pq/pdfsqueeze.exe"

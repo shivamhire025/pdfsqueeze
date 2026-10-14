@@ -10,9 +10,12 @@
 # Parameters (when run as a file):
 #   -Zip   <path>   install from a local .zip instead of downloading
 #   -Dir   <path>   install location (default %LOCALAPPDATA%\pdfsqueeze)
+#   -BaseUrl <url>  download from this folder URL instead of the GitHub release
+#                   (the zip and its .sha256 must both be there; used by tests)
 param(
     [string]$Zip = "",
-    [string]$Dir = (Join-Path $env:LOCALAPPDATA "pdfsqueeze")
+    [string]$Dir = (Join-Path $env:LOCALAPPDATA "pdfsqueeze"),
+    [string]$BaseUrl = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -29,7 +32,8 @@ try {
     if ($Zip -ne "") {
         Copy-Item $Zip $pkg
     } else {
-        $url = "https://github.com/$repo/releases/latest/download/$asset"
+        if ($BaseUrl -eq "") { $BaseUrl = "https://github.com/$repo/releases/latest/download" }
+        $url = "$BaseUrl/$asset"
         Write-Host "Downloading $url"
         try {
             Invoke-WebRequest -Uri $url -OutFile $pkg -UseBasicParsing

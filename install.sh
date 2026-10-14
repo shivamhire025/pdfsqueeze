@@ -11,6 +11,8 @@
 #   PDFSQUEEZE_TARBALL  install from this local .tar.gz instead of downloading
 #   PDFSQUEEZE_HOME     install location (default ~/.local/share/pdfsqueeze)
 #   PDFSQUEEZE_BIN      where to put the command (default ~/.local/bin)
+#   PDFSQUEEZE_BASE_URL download from this folder URL instead of the GitHub release
+#                       (the package and its .sha256 must both be there; used by tests)
 set -eu
 
 REPO="shivamhire025/pdfsqueeze"
@@ -42,7 +44,8 @@ trap 'rm -rf "$TMP"' EXIT
 if [ -n "${PDFSQUEEZE_TARBALL:-}" ]; then
   cp "$PDFSQUEEZE_TARBALL" "$TMP/pkg.tar.gz"
 else
-  URL="https://github.com/$REPO/releases/latest/download/pdfsqueeze-$PLATFORM-$ARCH.tar.gz"
+  BASE="${PDFSQUEEZE_BASE_URL:-https://github.com/$REPO/releases/latest/download}"
+  URL="$BASE/pdfsqueeze-$PLATFORM-$ARCH.tar.gz"
   echo "Downloading $URL"
   curl -fSL --progress-bar "$URL" -o "$TMP/pkg.tar.gz" \
     || fail "download failed. Is there a release for $PLATFORM/$ARCH yet?"
