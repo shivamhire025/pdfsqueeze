@@ -34,21 +34,36 @@ if ($Exe -eq "") {
 }
 if (-not (Test-Path $Exe)) { throw "$Exe not found; run cargo build --release first" }
 
-$qpdfPattern = if ($Arch -eq "x86") { "msvc32.*\.zip$" } else { "msvc64.*\.zip$" }
-$gsPattern   = if ($Arch -eq "x86") { "w32\.exe$" } else { "w64\.exe$" }
 $gsExeName   = if ($Arch -eq "x86") { "gswin32c.exe" } else { "gswin64c.exe" }
 
 $work = Join-Path ([IO.Path]::GetTempPath()) ("pdfsqueeze-stage-" + [Guid]::NewGuid().ToString("N"))
 New-Item -ItemType Directory -Path $work | Out-Null
 
-function Get-Asset([string]$Repo, [string]$Pattern) {
-    $rel = gh api "repos/$Repo/releases/latest" | ConvertFrom-Json
-    $asset = $rel.assets | Where-Object { $_.name -match $Pattern } | Select-Object -First 1
-    if (-not $asset) {
-        $rel.assets | ForEach-Object { Write-Host "  available: $($_.name)" }
-        throw "no asset matching '$Pattern' in the latest $Repo release ($($rel.tag_name))"
-    }
-    return [pscustomobject]@{ Url = $asset.browser_download_url; Name = $asset.name; Tag = $rel.tag_name }
+# Pinned engine releases. Bump these on purpose (and re-check the hashes at
+# the release pages) rather than taking whatever "latest" happens to be.
+$pins = @{
+    "qpdf-x64" = @{ Repo = "qpdf/qpdf"; Tag = "v12.4.2"; Name = "qpdf-12.4.2-msvc64.zip";
+                    Sha256 = "db87077e683630c1217e0e8f9a20a9749d952ab676e881c3689187763a5de25d" }
+    "qpdf-x86" = @{ Repo = "qpdf/qpdf"; Tag = "v12.4.2"; Name = "qpdf-12.4.2-msvc32.zip";
+                    Sha256 = "c4c62fbb5545090e80621a44e5b3063fb828e13b795c24aa637366b0e38ef8c0" }
+    "gs-x64"   = @{ Repo = "ArtifexSoftware/ghostpdl-downloads"; Tag = "gs10080"; Name = "gs10080w64.exe";
+                    Sha256 = "52a91b8bf09298788d7a57b9206127026c23eacd75405f0a131e26dc381dce50" }
+    "gs-x86"   = @{ Repo = "ArtifexSoftware/ghostpdl-downloads"; Tag = "gs10080"; Name = "gs10080w32.exe";
+                    Sha256 = "42f9e97ea2580bc24e2604cc03a2213bdba6094869dbe9f8ede50f8dd86b7463" }
+}
+
+# Download one pinned asset with the GitHub CLI and refuse it unless its SHA-256 matches.
+function Get-Pinned([string]$Key, [string]$Dest) {
+    $p = $pins[$Key]
+    Write-Host "$($p.Repo) $($p.Tag): $($p.Name)"
+    $dir = Join-Path $work ("dl-" + $Key)
+    New-Item -ItemType Directory -Path $dir | Out-Null
+    gh release download $p.Tag --repo $p.Repo --pattern $p.Name --dir $dir
+    if ($LASTEXITCODE -ne 0) { throw "download of $($p.Name) failed" }
+    $file = Join-Path $dir $p.Name
+    $got = (Get-FileHash $file -Algorithm SHA256).Hash.ToLower()
+    if ($got -ne $p.Sha256) { throw "$($p.Name): SHA-256 mismatch (expected $($p.Sha256), got $got)" }
+    Move-Item $file $Dest
 }
 
 function Expand-7z([string]$Archive, [string]$Dest) {
@@ -59,14 +74,10 @@ function Expand-7z([string]$Archive, [string]$Dest) {
 }
 
 # ---- fetch -----------------------------------------------------------------
-$q = Get-Asset "qpdf/qpdf" $qpdfPattern
-Write-Host "qpdf: $($q.Name) ($($q.Tag))"
-Invoke-WebRequest $q.Url -OutFile (Join-Path $work "qpdf.zip") -UseBasicParsing
+Get-Pinned "qpdf-$Arch" (Join-Path $work "qpdf.zip")
 Expand-Archive (Join-Path $work "qpdf.zip") -DestinationPath (Join-Path $work "qpdf") -Force
 
-$g = Get-Asset "ArtifexSoftware/ghostpdl-downloads" $gsPattern
-Write-Host "Ghostscript: $($g.Name) ($($g.Tag))"
-Invoke-WebRequest $g.Url -OutFile (Join-Path $work "gs.exe") -UseBasicParsing
+Get-Pinned "gs-$Arch" (Join-Path $work "gs.exe")
 Expand-7z (Join-Path $work "gs.exe") (Join-Path $work "gs")
 
 # ---- locate ----------------------------------------------------------------

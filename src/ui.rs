@@ -97,7 +97,16 @@ impl State {
 }
 
 fn random_hex() -> String {
-    // RandomState is seeded from the operating system's random source.
+    // Straight from the operating system's random source where there is one.
+    #[cfg(unix)]
+    {
+        use std::io::Read;
+        let mut buf = [0u8; 16];
+        if std::fs::File::open("/dev/urandom").and_then(|mut f| f.read_exact(&mut buf)).is_ok() {
+            return buf.iter().map(|b| format!("{b:02x}")).collect();
+        }
+    }
+    // Otherwise RandomState, which is seeded from the operating system.
     let mut out = String::new();
     for i in 0..2u64 {
         let mut h = RandomState::new().build_hasher();
@@ -248,7 +257,13 @@ fn handle(state: &State, mut req: Request) {
                 .with_header(header("Content-Type", "text/html; charset=utf-8"))
                 .with_header(header("Cache-Control", "no-store"))
                 .with_header(header("X-Content-Type-Options", "nosniff"))
-                .with_header(header("Referrer-Policy", "no-referrer"));
+                .with_header(header("Referrer-Policy", "no-referrer"))
+                .with_header(header(
+                    "Content-Security-Policy",
+                    "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; \
+                     script-src 'self' 'unsafe-inline'; connect-src 'self'; object-src 'none'; \
+                     base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+                ));
             let _ = req.respond(resp);
         }
 
@@ -337,13 +352,8 @@ fn handle(state: &State, mut req: Request) {
         (Method::Get, "/api/download") => {
             let rel = query_param(&query, "rel").unwrap_or_default();
             let full = state.session.join(&rel);
-            // Resolve links and `..` before checking it is inside the session.
-            let ok = full
-                .canonicalize()
-                .ok()
-                .zip(state.session.canonicalize().ok())
-                .map(|(f, s)| f.starts_with(s) && f.is_file())
-                .unwrap_or(false);
+            // Resolve links and `..` before checking it is inside the results folder.
+            let ok = inside_results(&state.session, &full);
             if !ok {
                 return respond_error(req, 404, "input_not_found", "no such file");
             }
@@ -506,12 +516,7 @@ fn handle(state: &State, mut req: Request) {
                 .and_then(|v| v["rel"].as_str().map(String::from))
                 .unwrap_or_default();
             let src = state.session.join(&rel);
-            let inside = src
-                .canonicalize()
-                .ok()
-                .zip(state.session.canonicalize().ok())
-                .map(|(f, s)| f.starts_with(s) && f.is_file())
-                .unwrap_or(false);
+            let inside = inside_results(&state.session, &src);
             if !inside {
                 return respond_error(req, 404, "input_not_found", "no such result");
             }
@@ -541,7 +546,7 @@ fn handle(state: &State, mut req: Request) {
             if rels.is_empty() || rels.len() > 5000 {
                 return respond_error(req, 400, "usage", "nothing to save");
             }
-            let Ok(session) = state.session.canonicalize() else {
+            let Ok(session) = state.session.join("out").canonicalize() else {
                 return respond_error(req, 500, "error", "session folder is missing");
             };
             let mut sources: Vec<PathBuf> = Vec::new();
@@ -602,6 +607,16 @@ fn handle(state: &State, mut req: Request) {
     }
 }
 
+/// True when `file` is a real file inside this session's results folder (`out/`).
+/// Uploads, previews and the temporary password file are never offered back.
+fn inside_results(session: &Path, file: &Path) -> bool {
+    file.canonicalize()
+        .ok()
+        .zip(session.join("out").canonicalize().ok())
+        .map(|(f, out)| f.starts_with(out) && f.is_file())
+        .unwrap_or(false)
+}
+
 fn downloads_dir() -> PathBuf {
     let home = std::env::var_os("USERPROFILE")
         .or_else(|| std::env::var_os("HOME"))
@@ -645,10 +660,9 @@ fn reveal_or_open(path: &Path, reveal: bool) {
         Os::Windows if reveal => std::process::Command::new("explorer")
             .arg(format!("/select,{}", path.display()))
             .spawn(),
-        Os::Windows => std::process::Command::new("cmd")
-            .args(["/C", "start", ""])
-            .arg(path)
-            .spawn(),
+        // explorer opens a file with its default program and never goes through a
+        // command interpreter, so characters like & in a file name are inert.
+        Os::Windows => std::process::Command::new("explorer").arg(path).spawn(),
         Os::Linux => std::process::Command::new("xdg-open")
             .arg(if reveal { path.parent().unwrap_or(path) } else { path })
             .spawn(),
@@ -666,7 +680,7 @@ fn run_tool(state: &State, req: &Value) -> Value {
 
     let mut args: Map<String, Value> = req["args"].as_object().cloned().unwrap_or_default();
     // Paths are decided by this server (uploaded ids, results folder), never by the page.
-    for k in ["input", "inputs", "output", "out_dir", "tessdata", "password_file"] {
+    for k in ["input", "inputs", "output", "out_dir", "tessdata", "password_file", "image"] {
         args.remove(k);
     }
 
@@ -718,7 +732,7 @@ fn run_tool(state: &State, req: &Value) -> Value {
     } else if props.contains_key("output") && !args.contains_key("output") {
         let stem = first_name
             .as_deref()
-            .map(|n| Path::new(n).file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default())
+            .map(|n| Path::new(n).file_stem().map(|s| sanitize_name(&s.to_string_lossy())).unwrap_or_default())
             .filter(|s| !s.is_empty())
             .unwrap_or_else(|| "result".into());
         let ext = if tool == "text" { "txt" } else { "pdf" };
@@ -776,9 +790,7 @@ fn open_browser(url: &str) {
     let spawned = match host_os() {
         Os::Mac => std::process::Command::new("open").arg(url).spawn(),
         Os::Linux => std::process::Command::new("xdg-open").arg(url).spawn(),
-        Os::Windows => std::process::Command::new("cmd")
-            .args(["/C", "start", "", url])
-            .spawn(),
+        Os::Windows => std::process::Command::new("explorer").arg(url).spawn(),
     };
     if spawned.is_err() {
         eprintln!("Could not open a browser automatically. Open the address above yourself.");
@@ -836,6 +848,12 @@ pub fn serve(port: Option<u16>, mode: Mode) -> Result<()> {
     let session = std::env::temp_dir().join(format!("pdfsqueeze-ui-{}", random_hex()));
     std::fs::create_dir_all(session.join("in"))?;
     std::fs::create_dir_all(session.join("out"))?;
+    #[cfg(unix)]
+    {
+        // Other users of a shared machine must not be able to read the documents here.
+        use std::os::unix::fs::PermissionsExt;
+        let _ = std::fs::set_permissions(&session, std::fs::Permissions::from_mode(0o700));
+    }
     let session = session.canonicalize().map(crate::engine::plain_path).unwrap_or(session);
 
     let state = Arc::new(State {
@@ -877,7 +895,20 @@ pub fn serve(port: Option<u16>, mode: Mode) -> Result<()> {
                 open_browser(&url);
             }
         }
-        Mode::Browser => open_browser(&url),
+        Mode::Browser => {
+            // The address holds the token, and a program's arguments are visible to other
+            // users of the machine. Open a private local page that forwards to it instead.
+            let hop = session.join("open.html");
+            let page = format!(
+                "<!doctype html><meta charset=utf-8><meta http-equiv=refresh content=\"0;url={url}\">\
+                 <a href=\"{url}\">Continue to pdfsqueeze</a>"
+            );
+            if std::fs::write(&hop, page).is_ok() {
+                open_browser(&hop.to_string_lossy());
+            } else {
+                open_browser(&url);
+            }
+        }
         Mode::ServerOnly => {}
     }
 
@@ -1082,6 +1113,22 @@ mod tests {
         let mut found = Vec::new();
         collect_files(&v, &root.join("out"), &mut found);
         assert_eq!(found, vec![root.join("out/a.pdf")]);
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn only_the_results_folder_is_downloadable() {
+        let root = std::env::temp_dir().join(format!("pdfsqueeze-res-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(root.join("out/run-1")).unwrap();
+        std::fs::create_dir_all(root.join("in/1")).unwrap();
+        std::fs::write(root.join("out/run-1/a.pdf"), b"x").unwrap();
+        std::fs::write(root.join("in/1/secret.pdf"), b"x").unwrap();
+        std::fs::write(root.join("pw-3.txt"), b"hunter2").unwrap();
+        assert!(inside_results(&root, &root.join("out/run-1/a.pdf")));
+        assert!(!inside_results(&root, &root.join("in/1/secret.pdf")));
+        assert!(!inside_results(&root, &root.join("pw-3.txt")));
+        assert!(!inside_results(&root, &root.join("out/../pw-3.txt")));
         let _ = std::fs::remove_dir_all(root);
     }
 }

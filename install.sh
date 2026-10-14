@@ -46,6 +46,18 @@ else
   echo "Downloading $URL"
   curl -fSL --progress-bar "$URL" -o "$TMP/pkg.tar.gz" \
     || fail "download failed. Is there a release for $PLATFORM/$ARCH yet?"
+  # Every release file has a .sha256 beside it; refuse a download that does not match.
+  curl -fsSL "$URL.sha256" -o "$TMP/pkg.sha256" \
+    || fail "could not fetch the checksum file ($URL.sha256)"
+  want="$(awk '{print $1}' "$TMP/pkg.sha256")"
+  if command -v sha256sum >/dev/null 2>&1; then
+    got="$(sha256sum "$TMP/pkg.tar.gz" | awk '{print $1}')"
+  else
+    got="$(shasum -a 256 "$TMP/pkg.tar.gz" | awk '{print $1}')"
+  fi
+  [ -n "$want" ] && [ "$want" = "$got" ] \
+    || fail "checksum mismatch: the download is damaged or not the published file"
+  echo "Checksum verified."
 fi
 
 tar -xzf "$TMP/pkg.tar.gz" -C "$TMP"
@@ -68,6 +80,13 @@ if [ -f "$TMP/pdfsqueeze/engines/MIN_GLIBC" ] && [ "$PLATFORM" = linux ]; then
 fi
 
 mkdir -p "$(dirname "$DEST")" "$BIN"
+# Only replace a folder that is a previous pdfsqueeze install (or is empty or absent),
+# so a mistyped PDFSQUEEZE_HOME can never wipe something else.
+if [ -e "$DEST" ]; then
+  if [ ! -d "$DEST" ] || { [ -n "$(ls -A "$DEST" 2>/dev/null)" ] && [ ! -x "$DEST/pdfsqueeze" ]; }; then
+    fail "$DEST exists and is not a pdfsqueeze install; choose another PDFSQUEEZE_HOME or remove it yourself"
+  fi
+fi
 rm -rf "$DEST"
 mv "$TMP/pdfsqueeze" "$DEST"
 ln -sf "$DEST/pdfsqueeze" "$BIN/pdfsqueeze"

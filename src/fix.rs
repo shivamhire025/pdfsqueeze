@@ -87,6 +87,7 @@ pub fn repair(input: &Path, output: &Path) -> Result<RepairReport> {
     let args: Vec<OsString> = vec![
         "-sDEVICE=pdfwrite".into(),
         "-dNOPAUSE".into(),
+        "-dSAFER".into(),
         "-dBATCH".into(),
         "-dQUIET".into(),
         out_arg,
@@ -208,6 +209,7 @@ pub fn to_pdfa(input: &Path, output: &Path, part: u8) -> Result<PdfaReport> {
         "-sProcessColorModel=DeviceRGB".into(),
         "-sDEVICE=pdfwrite".into(),
         "-dNOPAUSE".into(),
+        "-dSAFER".into(),
         "-dBATCH".into(),
         "-dQUIET".into(),
         permit,

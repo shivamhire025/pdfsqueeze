@@ -754,7 +754,20 @@ pub fn execute(cmd: Cmd, ctx: &Ctx) -> Result<Done> {
                     }
                 }
             }
-            Ok(Done::ok(text.trim_end().to_string(), json!({ "engines": engines })))
+            let mut done = Done::ok(text.trim_end().to_string(), json!({ "engines": engines }));
+            // Ghostscript reads untrusted documents; flag a build old enough to miss security fixes.
+            if let Some(gs) = engine::find("gs") {
+                if let Ok(out) = std::process::Command::new(&gs).arg("--version").output() {
+                    let v = String::from_utf8_lossy(&out.stdout).trim().to_string();
+                    if engine::gs_version_is_old(&v) {
+                        done = done.warn(format!(
+                            "Ghostscript {v} is older than {}: it may lack security fixes. Update it, or use the pdfsqueeze package, which bundles a current one.",
+                            engine::MIN_GS_VERSION
+                        ));
+                    }
+                }
+            }
+            Ok(done)
         }
 
         Cmd::Tools => Ok(agent::describe()),

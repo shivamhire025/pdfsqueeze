@@ -20,8 +20,11 @@ on:
     tags: ["v*"]
   workflow_dispatch:
 
+# Build jobs get a read-only token: they compile third-party crates and run
+# downloaded engines, so they must not be able to write to the repository.
+# Only the final `publish` job (tags only) is given write access.
 permissions:
-  contents: write
+  contents: read
 
 # Only one packaging run at a time; starting another cancels the first.
 # Every job below also has a timeout-minutes so a hang can never run for hours.
@@ -45,7 +48,7 @@ jobs:
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Install build-time engines (end users never need these)
         run: brew install ghostscript qpdf tesseract
       - run: cargo test --release
@@ -63,17 +66,12 @@ jobs:
           mkdir smoke && tar -xzf dist/pdfsqueeze-macos-${{ matrix.arch }}.tar.gz -C smoke
           SMOKE_REQUIRE_BUNDLED=1 env -i HOME="$HOME" PATH=/usr/bin:/bin \
             bash ./scripts/smoke.sh smoke/pdfsqueeze/pdfsqueeze
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: pdfsqueeze-macos-${{ matrix.arch }}
           path: |
             dist/pdfsqueeze-macos-${{ matrix.arch }}.tar.gz*
             dist/pdfsqueeze-macos-${{ matrix.arch }}.app.zip*
-      - name: Attach to release
-        if: startsWith(github.ref, 'refs/tags/v')
-        run: |
-          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --generate-notes
-          gh release upload "$GITHUB_REF_NAME" dist/pdfsqueeze-macos-${{ matrix.arch }}.tar.gz* dist/pdfsqueeze-macos-${{ matrix.arch }}.app.zip* --clobber
 
   linux:
     strategy:
@@ -87,18 +85,20 @@ jobs:
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Install build-time engines (end users never need these)
         run: |
           sudo apt-get update
           sudo apt-get install -y ghostscript tesseract-ocr tesseract-ocr-eng fonts-urw-base35 patchelf \
             cmake g++ zlib1g-dev libjpeg-dev libssl-dev
       # Ubuntu 22.04 ships qpdf 10.6, which lacks the JSON output pdfsqueeze needs
-      # (qpdf 11+). Build the current release so the package bundles a good one.
+      # (qpdf 11+). Build a pinned current release so the package bundles a good one.
       - name: Build a current qpdf from source
         run: |
           mkdir -p /tmp/qpdf-src && cd /tmp/qpdf-src
-          gh release download --repo qpdf/qpdf --pattern 'qpdf-[0-9]*.tar.gz' --dir .
+          # Pinned release, verified by SHA-256 (bump both together, on purpose).
+          gh release download v12.4.2 --repo qpdf/qpdf --pattern 'qpdf-12.4.2.tar.gz' --dir .
+          echo "8a58af5b6141319287c1883bec8bd1bd545b7567b7fc5e6ce5d25a1c85f36397  qpdf-12.4.2.tar.gz" | sha256sum -c -
           tar xzf qpdf-*.tar.gz
           cd "$(find . -maxdepth 1 -type d -name 'qpdf-*' | head -1)"
           cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
@@ -114,24 +114,19 @@ jobs:
         run: |
           docker run --rm -v "$PWD:/w" -e SMOKE_REQUIRE_BUNDLED=1 ubuntu:22.04 \
             bash /w/scripts/smoke.sh /w/dist/pdfsqueeze-linux-${{ matrix.arch }}/pdfsqueeze/pdfsqueeze
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: pdfsqueeze-linux-${{ matrix.arch }}
           path: dist/pdfsqueeze-linux-${{ matrix.arch }}.tar.gz*
-      - name: Attach to release
-        if: startsWith(github.ref, 'refs/tags/v')
-        run: |
-          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --generate-notes
-          gh release upload "$GITHUB_REF_NAME" dist/pdfsqueeze-linux-${{ matrix.arch }}.tar.gz* --clobber
 
   windows-x64:
     runs-on: windows-2022
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       # MSYS2 is used only for Tesseract; Ghostscript and qpdf come from their
       # official releases (MSYS2's Ghostscript has no Resource folder).
-      - uses: msys2/setup-msys2@v2
+      - uses: msys2/setup-msys2@ec48f7c5447b3140e2b088413ae3a55687bccb6e # v2
         with:
           msystem: MINGW64
           update: true
@@ -156,16 +151,10 @@ jobs:
         run: |
           Compress-Archive -Path dist/pdfsqueeze-windows-x64/pdfsqueeze -DestinationPath dist/pdfsqueeze-windows-x64.zip
           (Get-FileHash dist/pdfsqueeze-windows-x64.zip -Algorithm SHA256).Hash.ToLower() + "  pdfsqueeze-windows-x64.zip" | Out-File -Encoding ascii dist/pdfsqueeze-windows-x64.zip.sha256
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: pdfsqueeze-windows-x64
           path: dist/pdfsqueeze-windows-x64.zip*
-      - name: Attach to release
-        if: startsWith(github.ref, 'refs/tags/v')
-        shell: bash
-        run: |
-          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --generate-notes
-          gh release upload "$GITHUB_REF_NAME" dist/pdfsqueeze-windows-x64.zip* --clobber
 
   # 32-bit Windows: built, tested and smoke-tested like the others, but ships
   # without OCR because Tesseract has had no 32-bit build since 5.3.1.
@@ -174,7 +163,7 @@ jobs:
     continue-on-error: true
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - run: rustup target add i686-pc-windows-msvc
       - name: Unit tests (32-bit)
         run: cargo test --release --target i686-pc-windows-msvc
@@ -190,13 +179,30 @@ jobs:
       - name: Zip
         shell: pwsh
         run: Compress-Archive -Path dist/pdfsqueeze-windows-x86/pdfsqueeze -DestinationPath dist/pdfsqueeze-windows-x86.zip
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: pdfsqueeze-windows-x86
           path: dist/pdfsqueeze-windows-x86.zip
-      - name: Attach to release
-        if: startsWith(github.ref, 'refs/tags/v')
-        shell: bash
+
+  # The only job allowed to write: it attaches the finished, smoke-tested files to
+  # the release. Runs for version tags only, and only if every package built.
+  publish:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [macos, linux, windows-x64, windows-x86]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    env:
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          pattern: pdfsqueeze-*
+          merge-multiple: true
+          path: dist
+      - name: Create the release and attach every file
         run: |
+          ls -l dist
           gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --generate-notes
-          gh release upload "$GITHUB_REF_NAME" dist/pdfsqueeze-windows-x86.zip --clobber
+          gh release upload "$GITHUB_REF_NAME" dist/* --clobber

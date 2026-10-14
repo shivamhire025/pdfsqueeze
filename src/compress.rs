@@ -174,6 +174,7 @@ fn run_gs(gs: &Path, input: &Path, output: &Path, s: Settings, step: &Step) -> R
         "-dCompatibilityLevel=1.5".into(),
         format!("-dPDFSETTINGS={preset}").into(),
         "-dNOPAUSE".into(),
+        "-dSAFER".into(),
         "-dBATCH".into(),
         "-dDetectDuplicateImages=true".into(),
         "-dCompressFonts=true".into(),

@@ -4,7 +4,7 @@
 Everything here was checked against the repo, CI and the machine on the date below. Where
 something was only written and never run, it says so.
 
-- **Last updated:** 2026-10-13 (end of day).
+- **Last updated:** 2026-10-13 (end of day; security review fixes added, see CHANGELOG "Security" and SECURITY.md).
 - **Git state:** do not trust a number written here. Run `git status -sb` and
   `git log --oneline origin/main..HEAD`. On 2026-10-13 the tree was clean with **42 commits, 2 not
   pushed**: `19a945c` (sentence-case headline) and `6053d1b` (double-click launch and the Mac app).
@@ -189,7 +189,7 @@ owner's commit email is public in the history.
 
 ## Open questions for the owner
 
-- Push the 2 local commits and start the release dry run?
+- Push the local commits (incl. the security fixes) and start the release dry run? The dry run will be the first time the pinned downloads, the read-only token and the new `publish` job actually run, so expect to fix small things.
 - Apply for SignPath Foundation (free Windows signing), or ship Windows unsigned for now?
 - Wording of the first-launch notes (Gatekeeper, SmartScreen) on the page.
 - Add the photographers' names to `CREDITS.md`.

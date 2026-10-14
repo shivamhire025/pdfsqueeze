@@ -10,6 +10,9 @@ on:
 # A newer push cancels the run it supersedes, so quick successive pushes do not
 # stack up. (Free for a public repository; a private fork is metered: macOS
 # minutes count 10x, Windows 2x.)
+permissions:
+  contents: read
+
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
@@ -23,7 +26,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Unit tests
         run: cargo test
       - name: Release build
@@ -33,7 +36,7 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - run: rustup target add i686-pc-windows-msvc
       - name: Unit tests (32-bit)
         run: cargo test --target i686-pc-windows-msvc
@@ -42,7 +45,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Install engines
         run: |
           sudo apt-get update

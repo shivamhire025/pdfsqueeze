@@ -38,13 +38,32 @@ try {
         }
     }
 
+    if ($Zip -eq "") {
+        # Every release file has a .sha256 beside it; refuse a download that does not match.
+        $sumFile = Join-Path $tmp "pkg.sha256"
+        try { Invoke-WebRequest -Uri "$url.sha256" -OutFile $sumFile -UseBasicParsing }
+        catch { throw "could not fetch the checksum file ($url.sha256)" }
+        $want = ((Get-Content $sumFile -Raw).Trim() -split "\s+")[0].ToLower()
+        $got = (Get-FileHash $pkg -Algorithm SHA256).Hash.ToLower()
+        if ($want -ne $got) { throw "checksum mismatch: the download is damaged or not the published file" }
+        Write-Host "Checksum verified."
+    }
+
     Expand-Archive -Path $pkg -DestinationPath $tmp -Force
     $src = Join-Path $tmp "pdfsqueeze"
     if (-not (Test-Path (Join-Path $src "pdfsqueeze.exe"))) {
         throw "package looks wrong (no pdfsqueeze.exe inside)"
     }
 
-    if (Test-Path $Dir) { Remove-Item -Recurse -Force $Dir }
+    # Only replace a previous pdfsqueeze install (or an empty folder), never a random folder.
+    if (Test-Path $Dir) {
+        $isOurs = Test-Path (Join-Path $Dir "pdfsqueeze.exe")
+        $isEmpty = -not (Get-ChildItem -Force $Dir | Select-Object -First 1)
+        if (-not ($isOurs -or $isEmpty)) {
+            throw "$Dir exists and is not a pdfsqueeze install; choose another -Dir or remove it yourself"
+        }
+        Remove-Item -Recurse -Force $Dir
+    }
     New-Item -ItemType Directory -Path (Split-Path $Dir) -Force | Out-Null
     Move-Item $src $Dir
 

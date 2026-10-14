@@ -114,6 +114,7 @@ pub fn to_images(
 
     let mut args: Vec<OsString> = vec![
         "-dNOPAUSE".into(),
+        "-dSAFER".into(),
         "-dBATCH".into(),
         format!("-sDEVICE={}", format.device()).into(),
         format!("-r{dpi}").into(),
@@ -158,6 +159,7 @@ pub fn render_page_color(input: &Path, page: u32, dpi: u32, out_png: &Path) -> R
     let args: Vec<OsString> = vec![
         "-q".into(),
         "-dNOPAUSE".into(),
+        "-dSAFER".into(),
         "-dBATCH".into(),
         "-sDEVICE=png16m".into(),
         format!("-r{dpi}").into(),
@@ -179,6 +181,7 @@ pub fn render_page_gray(input: &Path, page: u32, dpi: u32, out_png: &Path) -> Re
     let args: Vec<OsString> = vec![
         "-q".into(),
         "-dNOPAUSE".into(),
+        "-dSAFER".into(),
         "-dBATCH".into(),
         "-sDEVICE=pnggray".into(),
         format!("-r{dpi}").into(),
@@ -199,6 +202,7 @@ pub fn render_thumbnail(input: &Path, out_png: &Path) -> Result<()> {
     let args: Vec<OsString> = vec![
         "-q".into(),
         "-dNOPAUSE".into(),
+        "-dSAFER".into(),
         "-dBATCH".into(),
         "-sDEVICE=png16m".into(),
         "-r40".into(),
@@ -222,6 +226,7 @@ pub fn render_page_thumbnails(input: &Path, dir: &Path, prefix: &str, max: u32) 
     let args: Vec<OsString> = vec![
         "-q".into(),
         "-dNOPAUSE".into(),
+        "-dSAFER".into(),
         "-dBATCH".into(),
         "-sDEVICE=png16m".into(),
         "-r36".into(),
@@ -244,6 +249,7 @@ pub fn page_texts(input: &Path, total: u32) -> Result<Vec<String>> {
     let scratch = Scratch::new("text")?;
     let args: Vec<OsString> = vec![
         "-dNOPAUSE".into(),
+        "-dSAFER".into(),
         "-dBATCH".into(),
         "-sDEVICE=txtwrite".into(),
         out_arg(&scratch.0.join("t-%d.txt")),

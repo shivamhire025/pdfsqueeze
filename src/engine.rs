@@ -251,6 +251,21 @@ fn check_qpdf_version(path: &Path) -> std::result::Result<(), String> {
     }
 }
 
+/// Oldest Ghostscript we consider safe for untrusted files (doctor warns below it).
+pub const MIN_GS_VERSION: &str = "10.05";
+
+/// `10.04.0` < `10.05`; anything unparsable counts as fine (no false alarms).
+pub fn gs_version_is_old(v: &str) -> bool {
+    let parse = |s: &str| -> Option<(u32, u32)> {
+        let mut it = s.trim().split('.');
+        Some((it.next()?.parse().ok()?, it.next()?.parse().ok()?))
+    };
+    match (parse(v), parse(MIN_GS_VERSION)) {
+        (Some(have), Some(min)) => have < min,
+        _ => false,
+    }
+}
+
 /// qpdf, checked once per run for a supported version.
 pub fn qpdf() -> Result<PathBuf> {
     static CHECKED: std::sync::OnceLock<std::result::Result<(), String>> = std::sync::OnceLock::new();
@@ -521,5 +536,19 @@ mod tests {
         mk("empty");
         assert_eq!(ghostscript_root(&root.join("empty")), None);
         let _ = std::fs::remove_dir_all(root);
+    }
+}
+
+#[cfg(test)]
+mod gs_version_tests {
+    use super::gs_version_is_old;
+
+    #[test]
+    fn old_ghostscript_is_flagged() {
+        assert!(gs_version_is_old("9.55.0"));
+        assert!(gs_version_is_old("10.04.0"));
+        assert!(!gs_version_is_old("10.05.1"));
+        assert!(!gs_version_is_old("10.08.0"));
+        assert!(!gs_version_is_old("weird"));
     }
 }

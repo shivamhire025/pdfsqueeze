@@ -5,6 +5,26 @@ Plain-language record of what pdfsqueeze can do and how well that has been check
 
 ## Unreleased (work since the 2026-10-10 CI run; not yet on GitHub)
 
+### Security (2026-10-13 review, all fixes below)
+- **Windows "Open" no longer goes through `cmd`**, so a file named like `a&b.pdf` cannot run a
+  command; result names are sanitized too. *Written, not run on Windows.*
+- **Only the results folder can be downloaded or saved** from the window server (not uploads,
+  previews or the temporary password file); the page can no longer pass an `image` path.
+  *Verified by unit test and live requests.*
+- **Ghostscript always runs with `-dSAFER`** (explicit, not just the default); `doctor` warns when
+  Ghostscript is older than 10.05. *Verified: 53 of 53 smoke checks pass with the flag.*
+- **Window server hardening:** Content-Security-Policy on the page, session folder mode 0700, token
+  from the OS random source, and browser mode opens a private local page so the token is not in the
+  `open` argument list. *Verified on macOS.*
+- **Installers verify the download's SHA-256** and refuse to delete a folder that is not a previous
+  pdfsqueeze install. *The guard was tested with a local package; checksum checking needs a real
+  release to run against.*
+- **Release builds:** Windows Ghostscript and qpdf and the Linux qpdf source are pinned to exact
+  versions with SHA-256 checks; actions are pinned to commit SHAs; build jobs get a read-only
+  token and a separate `publish` job holds write access. *Written, not run in CI yet.*
+- **Dependency audit** (`cargo audit`, 322 crates): no known vulnerabilities; four warnings, all in
+  the Linux-only GTK stack that is not compiled on Mac or Windows.
+
 ### Added
 - **Double-click to open**: started from the desktop with no arguments (Finder or Explorer), the
   program opens the window; from a terminal or script it still prints help
