@@ -5,6 +5,13 @@ Plain-language record of what pdfsqueeze can do and how well that has been check
 
 ## Unreleased (work since the 2026-10-10 CI run; not yet on GitHub)
 
+### Added (icons)
+- **Taskbar and Dock icon.** Windows: the icon is embedded in the .exe (`build.rs`, `assets/icon.ico`)
+  and set as the window's taskbar icon, so Explorer, the taskbar and pinned shortcuts show it. macOS: a
+  bare binary now sets the Dock icon too (the .app bundle already had one). *Verified:* builds and
+  55 unit tests pass on macOS. *Not verified:* what the Dock or the Windows taskbar actually show;
+  look at them by hand. The Windows part compiles only in CI.
+
 ### Security (2026-10-13 review, all fixes below)
 - **Windows "Open" no longer goes through `cmd`**, so a file named like `a&b.pdf` cannot run a
   command; result names are sanitized too. *Written, not run on Windows.*

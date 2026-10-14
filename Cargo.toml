@@ -25,3 +25,11 @@ wry = "0.52"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 muda = "0.21.2"
+# Dock icon when started as a bare binary (a .app bundle brings its own icon).
+objc2 = "0.6"
+objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSApplication", "NSImage", "NSResponder"] }
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSData"] }
+
+# Windows: put the icon inside the .exe so Explorer, the taskbar and pinned shortcuts show it.
+[target.'cfg(windows)'.build-dependencies]
+winresource = "0.1"

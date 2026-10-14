@@ -970,6 +970,21 @@ mod window {
         std::mem::forget(menu); // it must outlive the event loop
     }
 
+    /// The Dock shows a generic icon for a bare binary; give it ours. (Inside the .app bundle
+    /// the icon comes from the bundle, and this simply sets the same picture.)
+    #[cfg(target_os = "macos")]
+    fn set_dock_icon() {
+        use objc2::{AnyThread, MainThreadMarker};
+        use objc2_app_kit::{NSApplication, NSImage};
+        use objc2_foundation::NSData;
+        let Some(mtm) = MainThreadMarker::new() else { return };
+        let data = NSData::with_bytes(include_bytes!("../assets/icon-mac.png"));
+        if let Some(image) = NSImage::initWithData(NSImage::alloc(), &data) {
+            // SAFETY: called on the main thread with a valid image.
+            unsafe { NSApplication::sharedApplication(mtm).setApplicationIconImage(Some(&image)) };
+        }
+    }
+
     pub fn run(url: &str, state: Arc<State>) -> Result<()> {
         let session = state.session.clone();
         let event_loop = EventLoopBuilder::<UserEvent>::with_user_event().build();
@@ -984,8 +999,16 @@ mod window {
                 let (w, h) = rgba.dimensions();
                 tao::window::Icon::from_rgba(rgba.into_raw(), w, h).ok()
             });
-        let window = WindowBuilder::new()
-            .with_window_icon(icon)
+        #[cfg(target_os = "macos")]
+        set_dock_icon();
+        let builder = WindowBuilder::new().with_window_icon(icon.clone());
+        // Windows keeps a separate icon for the taskbar button.
+        #[cfg(target_os = "windows")]
+        let builder = {
+            use tao::platform::windows::WindowBuilderExtWindows;
+            builder.with_taskbar_icon(icon)
+        };
+        let window = builder
             .with_title("pdfsqueeze")
             .with_inner_size(LogicalSize::new(1180.0, 800.0))
             .with_min_inner_size(LogicalSize::new(820.0, 560.0))
