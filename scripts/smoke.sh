@@ -30,7 +30,8 @@ run() {
   esac
 }
 has() { # has NAME PATTERN  (checks $OUT)
-  if printf '%s' "$OUT" | grep -q -- "$2"; then ok "$1"; else bad "$1 (missing: $2)" "$OUT"; fi
+  # here-string, not a pipe: `grep -q` exits at the first match and would break the pipe
+  if grep -q -- "$2" <<<"$OUT"; then ok "$1"; else bad "$1 (missing: $2)" "$OUT"; fi
 }
 exists() { if [ -s "$1" ]; then ok "file $1"; else bad "file $1 was not created"; fi; }
 
@@ -40,12 +41,12 @@ echo "== engines"
 run "doctor" 0 -- --json doctor
 has "gs found" '"name": "gs"'
 has "qpdf found" '"name": "qpdf"'
-echo "$OUT" | grep -q '"found": false' && echo "  note  some engines are missing (see doctor)"
+grep -q '"found": false' <<<"$OUT" && echo "  note  some engines are missing (see doctor)"
 if [ "${SMOKE_REQUIRE_BUNDLED:-0}" = "1" ]; then
   # packaged builds must use their own engines, never ones that happen to be installed
   # Keys are sorted, so a found-but-not-bundled engine reads "bundled":false,"found":true.
   # (An engine that is simply absent, like Tesseract in the 32-bit build, is not a failure.)
-  if echo "$OUT" | tr -d ' \n' | grep -q '"bundled":false,"found":true'; then
+  if tr -d ' \n' <<<"$OUT" | grep -q '"bundled":false,"found":true'; then
     bad "all found engines are bundled" "$(echo "$OUT" | grep -B2 -A2 '"found": true')"
   else
     ok "all found engines are bundled"

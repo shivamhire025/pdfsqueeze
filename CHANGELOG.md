@@ -5,6 +5,14 @@ Plain-language record of what pdfsqueeze can do and how well that has been check
 
 ## Unreleased (work since the 2026-10-10 CI run; not yet on GitHub)
 
+### Release dry run (2026-10-13, run 38491410437, commit d226bca, nothing published)
+- Intel Mac, both Linux builds and both Windows builds **built and passed their smoke tests**, with
+  the new pinned engine downloads (SHA-256 checked) and the read-only build token. `publish` was
+  skipped as intended (no tag).
+- Apple Silicon Mac failed one check of 53: a race in `scripts/smoke.sh` (`grep -q` closing a pipe
+  early), not in the product. Fixed with a here-string; passes 53 of 53 locally. Needs one re-run.
+- Mac app (.app) zips built and passed the smoke test on Intel; arm64 had the same one race.
+
 ### Added (icons)
 - **Taskbar and Dock icon.** Windows: the icon is embedded in the .exe (`build.rs`, `assets/icon.ico`)
   and set as the window's taskbar icon, so Explorer, the taskbar and pinned shortcuts show it. macOS: a
