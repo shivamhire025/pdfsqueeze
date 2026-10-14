@@ -5,6 +5,19 @@ Plain-language record of what pdfsqueeze can do and how well that has been check
 
 ## Unreleased (work since the 2026-10-10 CI run; not yet on GitHub)
 
+### Landing page graphics redesign (2026-10-14, local, not pushed)
+- Replaced the bordered tables and hairline frames with illustrated scenes: a hero with fanned real
+  pages, an app window and floating result chips; a "your file goes nowhere" two-lane diagram
+  (upload sites versus on-device, "0 bytes uploaded"); six feature vignettes (organize with a lifted
+  page and insertion marker, compress between press plates, merge into a stack, a signature that
+  draws itself, OCR scan beam with extracted text, redaction bars and a lock); the app window with
+  callouts; an operating-system glyph on each download card with the visitor's own highlighted;
+  leaf-vein dividers; a vertical timeline; a closing banner over the leaf photograph.
+- Copy, download logic and the `RELEASE_READY` switch are unchanged. All graphics are inline SVG and
+  CSS (no new files, no external requests). *Verified:* rendered at desktop width in headless Chrome
+  and at phone width in the browser pane; no broken images and no horizontal overflow. *Not
+  verified:* Safari and Firefox; reduced-motion was only set in CSS, not exercised.
+
 ### Release dry run (2026-10-13, run 38491410437, commit d226bca, nothing published)
 - Intel Mac, both Linux builds and both Windows builds **built and passed their smoke tests**, with
   the new pinned engine downloads (SHA-256 checked) and the read-only build token. `publish` was
