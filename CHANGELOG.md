@@ -5,18 +5,18 @@ Plain-language record of what pdfsqueeze can do and how well that has been check
 
 ## Unreleased (work since the 2026-10-10 CI run; not yet on GitHub)
 
-### Landing page graphics redesign (2026-10-14, local, not pushed)
-- Replaced the bordered tables and hairline frames with illustrated scenes: a hero with fanned real
-  pages, an app window and floating result chips; a "your file goes nowhere" two-lane diagram
-  (upload sites versus on-device, "0 bytes uploaded"); six feature vignettes (organize with a lifted
-  page and insertion marker, compress between press plates, merge into a stack, a signature that
-  draws itself, OCR scan beam with extracted text, redaction bars and a lock); the app window with
-  callouts; an operating-system glyph on each download card with the visitor's own highlighted;
-  leaf-vein dividers; a vertical timeline; a closing banner over the leaf photograph.
-- Copy, download logic and the `RELEASE_READY` switch are unchanged. All graphics are inline SVG and
-  CSS (no new files, no external requests). *Verified:* rendered at desktop width in headless Chrome
-  and at phone width in the browser pane; no broken images and no horizontal overflow. *Not
-  verified:* Safari and Firefox; reduced-motion was only set in CSS, not exercised.
+### Landing page illustrations (2026-10-14, local, not pushed)
+- Illustrations only; the page's layout, styling, copy, tabs and download logic are exactly as they
+  were. Added: a hero scene under the buttons (fanned real pages, an app window with a cursor and
+  floating chips: "0 bytes uploaded", "12.4 MB to 3.1 MB", "Signed"); a small animated scene on each
+  of the six feature cells (organize, compress, merge, sign, make searchable, protect); and a
+  Mac, Windows or terminal drawing at the top of each download column. All inline SVG and CSS.
+- *Verified:* rendered at desktop width in headless Chrome, section by section. *Not verified:*
+  phone width and other browsers for this final version (an earlier, wider redesign was checked at
+  phone width and then set aside at the owner's request).
+- Set aside, kept in git history (`d9f7fbd`): a full redesign with a "your file goes nowhere" diagram,
+  callouts on the app screens, leaf-vein dividers, rounded cards and a timeline. Can be added back
+  piece by piece if wanted.
 
 ### Release dry run (2026-10-13, run 38491410437, commit d226bca, nothing published)
 - Intel Mac, both Linux builds and both Windows builds **built and passed their smoke tests**, with
