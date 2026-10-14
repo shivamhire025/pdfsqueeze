@@ -10,7 +10,7 @@ Plain-language record of what pdfsqueeze can do and how well that has been check
   the new pinned engine downloads (SHA-256 checked) and the read-only build token. `publish` was
   skipped as intended (no tag).
 - Apple Silicon Mac failed one check of 53: a race in `scripts/smoke.sh` (`grep -q` closing a pipe
-  early), not in the product. Fixed with a here-string; passes 53 of 53 locally. Needs one re-run.
+  early), not in the product. Fixed with a here-string. *Re-run 2026-10-13 21:03 (run 38492887452, commit 9b4ae0d): all six package jobs passed, including Apple Silicon and the Windows x64 build with the embedded icon.*
 - Mac app (.app) zips built and passed the smoke test on Intel; arm64 had the same one race.
 
 ### Added (icons)
