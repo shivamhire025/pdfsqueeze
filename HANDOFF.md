@@ -49,7 +49,7 @@ The owner (GitHub `shivamhire025`) stated these requirements:
 | Six packages (mac arm64/Intel, Linux x86_64/arm64, Windows x64/x86) | built and smoke-tested in CI **on 2026-10-10** (run `38021880189`) | **Predates the window, signing and the app. Must be re-run.** |
 | Windows window (WebView2) | compiles in CI (`38480625744`) | **never run by a person** |
 | Native file drag from Finder or Explorer onto the window | written | not tested |
-| `install.sh` (Linux), `install.ps1` (Windows) | written | **never run** (the macOS path of `install.sh` was run) |
+| `install.sh` (Mac, Linux), `install.ps1` (Windows) | tested in CI 2026-10-13 | against dry-run packages with checksum and damaged-package refusal; real release URL untested |
 | Published release / tag | **none** | installers and download buttons do not work until `v0.1.0` exists |
 | Code signing | none | Mac ad-hoc only; Windows unsigned (SmartScreen warning). Free option: SignPath Foundation, not applied for |
 | Landing page | live | desktop, wide and phone widths checked in a browser tab; download buttons point at the Releases page (`RELEASE_READY=false`) |
@@ -84,7 +84,7 @@ JavaScript. Add `&splash=hold` to keep the opening splash on screen.
    builds the six packages plus `pdfsqueeze-macos-<arch>.app.zip` for both Macs and smoke-tests
    the app. Free on a public repo; budget 20 to 40 minutes; watch it and cancel past about twice
    that. Fix whatever it finds (the app path has never run in CI).
-3. **Installers**: test `install.sh` on Linux and `install.ps1` on Windows (a CI job per OS, free).
+3. **Installers**: DONE 2026-10-13 against dry-run packages (`gh workflow run installers.yml -f run_id=<release run id>`); only the real release URL is untested.
 4. **Tag**: `git tag v0.1.0 && git push origin v0.1.0` publishes the files to a GitHub Release.
 5. **Page**: set `RELEASE_READY = true` near the bottom of `docs/index.html` and push (Pages
    redeploys; GitHub caches about 10 minutes, so add a `?v=` query when checking).

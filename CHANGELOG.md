@@ -13,6 +13,16 @@ Plain-language record of what pdfsqueeze can do and how well that has been check
   early), not in the product. Fixed with a here-string. *Re-run 2026-10-13 21:03 (run 38492887452, commit 9b4ae0d): all six package jobs passed, including Apple Silicon and the Windows x64 build with the embedded icon.*
 - Mac app (.app) zips built and passed the smoke test on Intel; arm64 had the same one race.
 
+### Installers tested (2026-10-13, run 38493915273, free, ~1 minute)
+- `install.sh` on Linux (Ubuntu 22.04) and `install.ps1` on Windows (Server 2022) were run in CI
+  against the packages from the dry run, served by a local web server so the real download and
+  checksum code ran: good package installed with "Checksum verified"; a deliberately damaged copy
+  was refused and left nothing behind; re-install over a previous install worked; a folder that
+  was not pdfsqueeze was refused and untouched; the installed command passed the smoke test with
+  system engines hidden (Linux 53 of 53). `install.sh` also run on the Mac with the CI-built package
+  (53 of 53). *Not tested:* the real GitHub download URL (needs a release), a person's desktop.
+- Installers gained `PDFSQUEEZE_BASE_URL` / `-BaseUrl` for this; `.github/workflows/installers.yml`.
+
 ### Added (icons)
 - **Taskbar and Dock icon.** Windows: the icon is embedded in the .exe (`build.rs`, `assets/icon.ico`)
   and set as the window's taskbar icon, so Explorer, the taskbar and pinned shortcuts show it. macOS: a
