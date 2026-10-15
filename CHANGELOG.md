@@ -19,9 +19,16 @@ Plain-language record of what pdfsqueeze can do and how well that has been check
 - **Fixed, written but not yet run in CI:** Linux packages listed licences for only 11 of about 60
   bundled libraries (the package lookup missed merged-/usr paths); Windows manifest had empty
   versions for Ghostscript and qpdf and no licence texts for the ~40 MSYS2 DLLs.
-- **Open finding:** the Linux package bundles Ubuntu 22.04's Ghostscript 9.55.0 (distribution-patched
-  but an old version, so `doctor` warns on it) and Tesseract 4.1.1. Recommended: build the pinned
-  Ghostscript 10.08.0 from source in the Linux job. Needs a CI run to verify.
+- **Linux Ghostscript:** the package used Ubuntu 22.04's Ghostscript 9.55.0 (patched but old; `doctor`
+  warned on it). It is now built from the official 10.08.0 source (SHA-256 checked), like qpdf.
+  *Verified in Ubuntu 22.04 arm64 containers (`scripts/linux-docker.sh`):* package builds with 26
+  libraries instead of 59, manifest and licence texts cover all 27 components, and 54 of 54 smoke
+  checks pass in a bare container with only the bundled engines; `doctor` no longer warns.
+  Not verified: the x86_64 build (only arm64 ran locally) and the release workflow itself.
+- **Bug found by that test and fixed:** non-existent folders in Ghostscript's search path made
+  text extraction return nothing on a source-built Ghostscript; they are now skipped. macOS still
+  passes 53 of 53.
+- Tesseract on Linux is still Ubuntu's 4.1.1 (works; the Windows and macOS builds ship 5.5.3).
 - **Not verified:** the Magnific free licence terms for commercial use; licence headers of the
   fonts and colour profiles shipped inside `share/ghostscript`.
 
