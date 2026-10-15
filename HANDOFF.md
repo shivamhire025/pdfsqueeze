@@ -91,8 +91,10 @@ packages; Linux package now builds Ghostscript 10.08.0 from source and was **ver
 2. **Phase 0 of the launch plan** (see vault page "pdfsqueeze - Launch plan"): `PRIVACY.md`,
    `TRADEMARK.md`, `CONTRIBUTING.md` (DCO), final `TERMS.md`; reword landing-page claims to be exact
    once there is a price or email capture; domain; publisher name and the wife's-account agreement.
-3. **Offline licence module** (Ed25519 key, key verified once at activation, never required for
-   agents/CLI); payment processor is **Lemon Squeezy** (owner's choice 2026-10-14). Not started.
+3. **Offline licence module: BUILT** (2026-10-15, commit `40c32e6`, not pushed): see `LICENSING.md`.
+   Gates nothing. Open: window screen for it (UI change, ask first), automatic issuing from a Lemon
+   Squeezy webhook, back up the private key at `~/.config/pdfsqueeze-publisher/`. Processor is
+   **Lemon Squeezy** (owner's choice 2026-10-14).
 4. **Owner decisions still open:** photographers' names for `CREDITS.md`; Gatekeeper/SmartScreen
    wording; Magnific licence terms for commercial use; look at Dock/taskbar icons; try the window.
 5. **Tag** `v0.1.0` (publishes; first real run of the `publish` job), then `RELEASE_READY = true`.
@@ -118,7 +120,8 @@ packages; Linux package now builds Ghostscript 10.08.0 from source and was **ver
 | `scripts/gen-notices.py`, `THIRD-PARTY-NOTICES.md`, `THIRD-PARTY-LICENSES-RUST.txt` | Generated notices (Rust crates + bundled programs); re-run after dependency changes; shipped in every package |
 | `scripts/licenses/` | Licence texts for source-built engines (qpdf, Ghostscript) used by the Linux bundler |
 | `scripts/linux-docker.sh` | One-command Linux build + smoke test in Docker (Ubuntu 22.04, ~3 min) |
-| `TERMS.md`, `SECURITY.md` | Draft terms of use (not shipped yet); security model and reporting |
+| `src/licence.rs`, `src/bin/pdfsqueeze-keytool.rs`, `LICENSING.md` | Offline licence verification, the publisher's issue tool (not packaged), how it all works |
+| `TERMS.md`, `PRIVACY.md`, `TRADEMARK.md`, `CONTRIBUTING.md`, `SECURITY.md` | Draft terms of use (not shipped yet); security model and reporting |
 | `scripts/bundle-engines-linux.sh`, `package-linux.sh` | Linux (ldd + patchelf; glibc floor recorded) |
 | `scripts/stage-windows.ps1`, `bundle-tesseract-windows.sh` | Windows: official Ghostscript + qpdf unpacked with 7-Zip; MSYS2 only for Tesseract |
 | `scripts/make-hero.py`, `set-hero.py` | Generated licence-free artwork; prepare a photograph as the background |
