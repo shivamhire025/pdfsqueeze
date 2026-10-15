@@ -7,6 +7,7 @@ mod convert;
 mod engine;
 mod fix;
 mod imgpdf;
+mod licence;
 mod ocr;
 mod pages;
 mod pdfout;

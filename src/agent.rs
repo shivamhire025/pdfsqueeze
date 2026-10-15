@@ -18,7 +18,7 @@ use std::io::{BufRead, Write};
 use std::path::{Component, Path, PathBuf};
 
 /// Commands that are not exposed as tools.
-const HIDDEN: &[&str] = &["help", "tools", "mcp", "ui"];
+const HIDDEN: &[&str] = &["help", "tools", "mcp", "ui", "licence"];
 
 /// Arguments that hold file-system paths (checked against the allow-list).
 const PATH_ARGS: &[&str] = &[

@@ -128,7 +128,15 @@ has "mcp tools/list" '"inputSchema"'
 if [ "${SMOKE_SKIP_OCR:-0}" = "1" ]; then
   echo "== OCR skipped (SMOKE_SKIP_OCR=1)"
 else
-  echo "== OCR (Tesseract)"
+  echo "== licence (offline; gates nothing)"
+run "licence status" 0 -- --json licence status
+has "licence state reported" '"state"'
+run "licence rejects junk" 1 -- --json licence activate "PDFSQ1.junk.junk"
+has "licence error code" 'licence_invalid'
+run "licence is not an agent tool" 0 -- tools --json
+if grep -q '"name": "licence"' <<<"$OUT"; then bad "licence hidden from agents"; else ok "licence hidden from agents"; fi
+
+echo "== OCR (Tesseract)"
   run "ocr" 0 -- ocr three.pdf -o ocr.pdf
   exists ocr.pdf
 fi

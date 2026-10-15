@@ -308,6 +308,11 @@ pub enum Cmd {
         #[arg(short, long)]
         output: Option<PathBuf>,
     },
+    /// Show, install or remove a licence key (works offline; nothing is sent anywhere)
+    Licence {
+        #[command(subcommand)]
+        action: LicenceAction,
+    },
     /// Check which engines are installed
     Doctor,
     /// Open a point-and-click interface in your browser (runs locally, nothing is uploaded)
@@ -336,3 +341,19 @@ pub enum Cmd {
     },
 }
 
+/// What to do with a licence key.
+#[derive(clap::Subcommand, Debug)]
+pub enum LicenceAction {
+    /// Show whether a licence is installed and who it is for
+    Status,
+    /// Check a licence key and keep it for this user
+    Activate {
+        /// The licence key (starts with PDFSQ1.). Use `-` to read it from standard input.
+        key: Option<String>,
+        /// Read the key from a file instead
+        #[arg(long)]
+        file: Option<PathBuf>,
+    },
+    /// Remove the installed licence (the program keeps working without one)
+    Remove,
+}

@@ -6,7 +6,7 @@ use crate::cli::*;
 use crate::compress::{self, Goal, Level};
 use crate::util::{human, parse_size, sibling};
 use crate::{agent, batch, convert, engine, fix, imgpdf, ocr, pages, security, stamp};
-use anyhow::{bail, Result};
+use anyhow::{bail, Context, Result};
 use pages::SplitMode;
 use serde_json::{json, Value};
 use std::io::IsTerminal;
@@ -98,6 +98,7 @@ pub const ERROR_CODES: &[(&str, &str)] = &[
     ("invalid_password", "The supplied password is wrong"),
     ("language_unavailable", "The requested OCR language data is not installed"),
     ("path_not_allowed", "The path is outside the folders this server may access"),
+    ("licence_invalid", "A licence key is damaged, not genuine, or expired"),
     ("not_available", "The feature is not available in this build"),
     ("error", "Any other failure"),
 ];
@@ -198,6 +199,7 @@ pub fn command_name(c: &Cmd) -> &'static str {
         Cmd::Check { .. } => "check",
         Cmd::Linearize { .. } => "linearize",
         Cmd::Pdfa { .. } => "pdfa",
+        Cmd::Licence { .. } => "licence",
         Cmd::Doctor => "doctor",
         Cmd::Tools => "tools",
         Cmd::Ui { .. } => "ui",
@@ -732,6 +734,8 @@ pub fn execute(cmd: Cmd, ctx: &Ctx) -> Result<Done> {
             ))
         }
 
+        Cmd::Licence { action } => licence_cmd(&action),
+
         Cmd::Doctor => {
             let mut text = String::new();
             let mut engines = Vec::new();
@@ -754,6 +758,7 @@ pub fn execute(cmd: Cmd, ctx: &Ctx) -> Result<Done> {
                     }
                 }
             }
+            text.push_str(&format!("\nlicence   {}\n", licence_summary(&crate::licence::status().0)));
             let mut done = Done::ok(text.trim_end().to_string(), json!({ "engines": engines }));
             // Ghostscript reads untrusted documents; flag a build old enough to miss security fixes.
             if let Some(gs) = engine::find("gs") {
@@ -1010,5 +1015,91 @@ mod tests {
     fn percent_rounds_sensibly() {
         assert_eq!(saved_percent(1000, 250), 75.0);
         assert_eq!(saved_percent(0, 0), 100.0 - 0.0);
+    }
+}
+
+/// One line describing a licence state, for people.
+fn licence_summary(st: &crate::licence::Status) -> String {
+    use crate::licence::Status;
+    match st {
+        Status::None => "none (pdfsqueeze works fully without one; a licence supports its development)".into(),
+        Status::Valid(l) => format!("{} licence for {} (order {})", l.edition, l.email, l.id),
+        Status::Expired(l) => format!("{} licence for {} expired on {}", l.edition, l.email, l.expires.clone().unwrap_or_default()),
+        Status::Invalid(why) => format!("installed key is not valid: {why}"),
+    }
+}
+
+fn licence_json(st: &crate::licence::Status, src: &Option<crate::licence::Source>) -> Value {
+    use crate::licence::{Source, Status};
+    let (state, lic, why) = match st {
+        Status::None => ("none", None, None),
+        Status::Valid(l) => ("valid", Some(l), None),
+        Status::Expired(l) => ("expired", Some(l), None),
+        Status::Invalid(w) => ("invalid", None, Some(w.clone())),
+    };
+    let source = match src {
+        Some(Source::Env) => json!("environment"),
+        Some(Source::EnvFile(p)) => json!(p.display().to_string()),
+        Some(Source::File(p)) => json!(p.display().to_string()),
+        None => Value::Null,
+    };
+    json!({
+        "state": state,
+        "licensed": state == "valid",
+        "edition": lic.map(|l| l.edition.clone()),
+        "email": lic.map(|l| l.email.clone()),
+        "name": lic.and_then(|l| l.name.clone()),
+        "id": lic.map(|l| l.id.clone()),
+        "issued": lic.map(|l| l.issued.clone()),
+        "expires": lic.and_then(|l| l.expires.clone()),
+        "reason": why,
+        "source": source,
+    })
+}
+
+fn licence_cmd(action: &crate::cli::LicenceAction) -> Result<Done> {
+    use crate::cli::LicenceAction;
+    use std::io::Read;
+    match action {
+        LicenceAction::Status => {
+            let (st, src) = crate::licence::status();
+            let human = licence_summary(&st);
+            Ok(Done::ok(human, licence_json(&st, &src)))
+        }
+        LicenceAction::Activate { key, file } => {
+            let text = match (key.as_deref(), file) {
+                (Some("-"), _) => {
+                    let mut s = String::new();
+                    std::io::stdin().read_to_string(&mut s).context("could not read standard input")?;
+                    s
+                }
+                (Some(k), None) => k.to_string(),
+                (None, Some(f)) => std::fs::read_to_string(f)
+                    .with_context(|| format!("cannot read {}", f.display()))?,
+                (Some(_), Some(_)) => {
+                    return Err(CliError { code: "usage", message: "give a key or --file, not both".into() }.into())
+                }
+                (None, None) => {
+                    return Err(CliError { code: "usage", message: "give a licence key, or --file <path>".into() }.into())
+                }
+            };
+            match crate::licence::install(&text) {
+                Ok((l, path)) => {
+                    let st = crate::licence::Status::Valid(l);
+                    let mut data = licence_json(&st, &Some(crate::licence::Source::File(path.clone())));
+                    data["stored_at"] = json!(path.display().to_string());
+                    Ok(Done::ok(
+                        format!("Licence installed: {}\nStored at {}", licence_summary(&st), path.display()),
+                        data,
+                    ))
+                }
+                Err(why) => Err(CliError { code: "licence_invalid", message: why }.into()),
+            }
+        }
+        LicenceAction::Remove => {
+            let removed = crate::licence::remove().map_err(|e| anyhow::anyhow!(e))?;
+            let human = if removed { "Licence removed." } else { "No licence file was installed." };
+            Ok(Done::ok(human, json!({ "removed": removed })))
+        }
     }
 }

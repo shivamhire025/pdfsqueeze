@@ -32,6 +32,22 @@ Plain-language record of what pdfsqueeze can do and how well that has been check
 - **Not verified:** the Magnific free licence terms for commercial use; licence headers of the
   fonts and colour profiles shipped inside `share/ghostscript`.
 
+### Offline licence keys (2026-10-15, local, not pushed)
+- **Added** `pdfsqueeze licence status | activate | remove` and `src/licence.rs`: Ed25519-signed keys
+  (`PDFSQ1.<payload>.<signature>`) verified on the user's computer, no network, no account. The
+  program holds only the public key. **Nothing is gated:** every command, the window and the MCP
+  server work without a licence; a licence identifies a supporter. `PDFSQUEEZE_LICENCE` and
+  `PDFSQUEEZE_LICENCE_FILE` let scripts supply one. `licence` is hidden from agent tools. `doctor`
+  shows the licence state. New error code `licence_invalid`.
+- **Publisher tool** `pdfsqueeze-keytool` (`keygen`, `issue`, `verify`), built beside the program
+  but not packaged. The production keypair was generated on 2026-10-15; the private key is outside
+  the repository and the public key is embedded. See `LICENSING.md`.
+- *Verified:* 75 unit tests (sign, verify, tampering, wrong key, expiry, damaged and pasted keys,
+  dates); an end-to-end run of keygen, issue, activate, status, env override, tamper and remove in
+  a temporary home; smoke 59 of 59 on macOS. *Not verified:* Windows and Linux (code is portable
+  std; the config paths are untested there); the window has no licence screen yet (a UI change that
+  needs the owner's say-so); no store webhook exists yet (keys are issued by hand).
+
 ### Release dry run 3 (2026-10-15, run 38676970538, commit 5f34af2, nothing published)
 - CI (38676962802): 5 of 5 green. Release dry run: all six package jobs and `publish` skipped as
   designed, **including the new Ghostscript 10.08.0 source build on Linux x86_64 and arm64**.
