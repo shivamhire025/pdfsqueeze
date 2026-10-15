@@ -86,12 +86,19 @@ fi
 # Licence texts and manifest (best effort via dpkg).
 if command -v dpkg >/dev/null; then
   sort -u "$PKGS" | while read -r f; do
-    pkg="$(dpkg -S "$f" 2>/dev/null | head -1 | cut -d: -f1 || true)"
-    [ -n "$pkg" ] || continue
+    # dpkg records /lib/... or /usr/lib/... depending on the package; try every spelling.
+    real="$(readlink -f "$f")"
+    pkg=""
+    for cand in "$f" "$real" "${f#/usr}" "/usr${f#/usr}" "${real#/usr}" "/usr${real#/usr}"; do
+      pkg="$(dpkg -S "$cand" 2>/dev/null | head -1 | cut -d: -f1 || true)"
+      [ -n "$pkg" ] && break
+    done
+    if [ -z "$pkg" ]; then echo "warning: no package owns $f (licence not recorded)" >&2; continue; fi
     if [ ! -d "$OUT/licenses/$pkg" ]; then
       mkdir -p "$OUT/licenses/$pkg"
       cp "/usr/share/doc/$pkg/copyright" "$OUT/licenses/$pkg/" 2>/dev/null || true
-      echo "$pkg $(dpkg-query -W -f='${Version}' "$pkg" 2>/dev/null)" >> "$OUT/MANIFEST.txt"
+      pkgname="${pkg%%:*}"
+      echo "$pkgname $(dpkg-query -W -f='${Version}' "$pkg" 2>/dev/null)" >> "$OUT/MANIFEST.txt"
     fi
   done
 fi

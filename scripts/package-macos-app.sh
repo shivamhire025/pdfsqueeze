@@ -21,7 +21,20 @@ rm -rf "$APP" "dist/$NAME.app.zip" dist/AppIcon.iconset
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp target/release/pdfsqueeze "$APP/Contents/MacOS/pdfsqueeze"
 ./scripts/bundle-engines.sh "$APP/Contents/Resources/engines"
-cp LICENSE README.md AGENTS.md CREDITS.md "$APP/Contents/Resources/" 2>/dev/null || true
+cp LICENSE README.md AGENTS.md CREDITS.md THIRD-PARTY-NOTICES.md THIRD-PARTY-LICENSES-RUST.txt "$APP/Contents/Resources/"
+# Written offer of source code for the bundled AGPL/LGPL programs (see THIRD-PARTY-NOTICES.md).
+cat > "$APP/Contents/Resources/SOURCE.txt" <<'SRC'
+pdfsqueeze is licensed under the GNU AGPL v3 (see LICENSE).
+Source code: https://github.com/shivamhire025/pdfsqueeze
+
+This app bundles unmodified builds of third-party programs and libraries (Ghostscript, qpdf,
+Tesseract and their dependencies) from Homebrew. engines/MANIFEST.txt lists each with its exact
+version, engines/licenses/ holds their licence texts, and THIRD-PARTY-NOTICES.md links to each
+upstream project. The corresponding source for those exact versions is available from the
+upstream projects; if you cannot obtain it, open an issue at
+https://github.com/shivamhire025/pdfsqueeze/issues and it will be provided for at least three
+years from the date of your download.
+SRC
 
 # Icon: build AppIcon.icns from the padded 1024 px artwork.
 mkdir -p dist/AppIcon.iconset

@@ -22,7 +22,7 @@ rm -rf "dist/$NAME" "dist/$NAME.tar.gz"
 mkdir -p "$STAGE"
 cp target/release/pdfsqueeze "$STAGE/pdfsqueeze"
 ./scripts/bundle-engines-linux.sh "$STAGE/engines"
-cp LICENSE README.md AGENTS.md "$STAGE/"
+cp LICENSE README.md AGENTS.md CREDITS.md THIRD-PARTY-NOTICES.md THIRD-PARTY-LICENSES-RUST.txt "$STAGE/"
 
 cat > "$STAGE/SOURCE.txt" <<EOF
 pdfsqueeze is licensed under the GNU AGPL v3 (see LICENSE).
@@ -30,9 +30,13 @@ Source code: https://github.com/shivamhire025/pdfsqueeze
 
 This package also bundles unmodified builds of third-party programs and
 libraries (Ghostscript, qpdf, Tesseract and their dependencies) from the
-distribution's packages. engines/MANIFEST.txt lists each with its version,
-engines/licenses/ holds their licence texts, and their source is available
-from the distribution that provided them.
+Ubuntu packages. engines/MANIFEST.txt lists
+each with its exact version, engines/licenses/ holds their licence texts, and
+THIRD-PARTY-NOTICES.md links to the upstream projects. The corresponding source
+for those exact versions is available from the upstream projects and from
+Ubuntu (https://packages.ubuntu.com, "Download source package"); if you cannot
+obtain it, open an issue at https://github.com/shivamhire025/pdfsqueeze/issues
+and it will be provided for at least three years from the date of your download.
 EOF
 
 tar -czf "dist/$NAME.tar.gz" -C "dist/$NAME" pdfsqueeze

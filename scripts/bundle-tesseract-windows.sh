@@ -31,6 +31,20 @@ ldd "$TESS" | awk '/=>/ {print $3}' | grep -i "^$PREFIX/" | while read -r dll; d
   [ -f "$DEST/$(basename "$dll")" ] || cp "$dll" "$DEST/"
 done
 
+# Licence texts and versions for every package that supplied a DLL (not just Tesseract itself).
+mkdir -p "$ENGINES/licenses"
+for dll in "$DEST"/*.dll "$TESS"; do
+  owner="$(pacman -Qo "$PREFIX/bin/$(basename "$dll")" 2>/dev/null | sed -n 's/.*is owned by //p' || true)"
+  [ -n "$owner" ] || continue
+  pkgfull="$(echo "$owner" | awk '{print $1}')"; ver="$(echo "$owner" | awk '{print $2}')"
+  short="${pkgfull#mingw-w64-x86_64-}"
+  if ! grep -q "^$pkgfull " "$ENGINES/MANIFEST.txt" 2>/dev/null; then
+    echo "$pkgfull $ver" >> "$ENGINES/MANIFEST.txt"
+    src="$PREFIX/share/licenses/$short"
+    if [ -d "$src" ]; then mkdir -p "$ENGINES/licenses/$short"; cp -R "$src"/. "$ENGINES/licenses/$short/"; fi
+  fi
+done
+
 # English data and the helper files Tesseract needs to write PDFs
 TD="$PREFIX/share/tessdata"
 mkdir -p "$ENGINES/share/tessdata"
@@ -48,8 +62,7 @@ mkdir -p "$ENGINES/licenses"
 for pkg in tesseract-ocr leptonica; do
   src="$PREFIX/share/licenses/$pkg"
   if [ -d "$src" ]; then mkdir -p "$ENGINES/licenses/$pkg"; cp -R "$src"/. "$ENGINES/licenses/$pkg/"; fi
-  v="$(pacman -Q "mingw-w64-x86_64-$pkg" 2>/dev/null || true)"
-  [ -n "$v" ] && echo "$v" >> "$ENGINES/MANIFEST.txt"
+  : # versions were recorded above, together with every other bundled DLL's package
 done
 
 echo "added tesseract with $(ls "$DEST"/*.dll 2>/dev/null | wc -l | tr -d ' ') DLLs to $ENGINES"

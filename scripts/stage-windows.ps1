@@ -110,10 +110,11 @@ Get-ChildItem $gsRoot -Recurse -File | Where-Object { $_.Name -match "^(COPYING|
     Select-Object -First 3 | ForEach-Object { Copy-Item $_.FullName (Join-Path $lic ("ghostscript-" + $_.Name)) }
 Get-ChildItem (Join-Path $work "qpdf") -Recurse -File | Where-Object { $_.Name -match "^(LICENSE|NOTICE|COPYING)" } |
     Select-Object -First 3 | ForEach-Object { Copy-Item $_.FullName (Join-Path $lic ("qpdf-" + $_.Name)) }
-@("ghostscript $($g.Tag) ($($g.Name))", "qpdf $($q.Tag) ($($q.Name))") |
+$gp = $pins["gs-$Arch"]; $qp = $pins["qpdf-$Arch"]
+@("ghostscript $($gp.Tag) ($($gp.Name))", "qpdf $($qp.Tag) ($($qp.Name))") |
     Set-Content (Join-Path $Out "engines/MANIFEST.txt")
 
-Copy-Item LICENSE, README.md, AGENTS.md $Out
+Copy-Item LICENSE, README.md, AGENTS.md, CREDITS.md, THIRD-PARTY-NOTICES.md, THIRD-PARTY-LICENSES-RUST.txt $Out
 
 @"
 pdfsqueeze is licensed under the GNU AGPL v3 (see LICENSE).
@@ -122,8 +123,12 @@ Source code: https://github.com/shivamhire025/pdfsqueeze
 This package also bundles unmodified official builds of third-party programs:
 Ghostscript (AGPL, https://ghostscript.com) and qpdf (Apache 2.0,
 https://github.com/qpdf/qpdf), and for 64-bit builds Tesseract and its
-dependencies from MSYS2. engines/MANIFEST.txt lists each with its version and
-engines/licenses/ holds their licence texts.
+dependencies from MSYS2. engines/MANIFEST.txt lists each with its exact version,
+engines/licenses/ holds their licence texts, and THIRD-PARTY-NOTICES.md links to
+each upstream project. The corresponding source for those exact versions is
+available from the upstream projects; if you cannot obtain it, open an issue at
+https://github.com/shivamhire025/pdfsqueeze/issues and it will be provided for
+at least three years from the date of your download.
 "@ | Set-Content (Join-Path $Out "SOURCE.txt")
 
 Remove-Item -Recurse -Force $work -ErrorAction SilentlyContinue
