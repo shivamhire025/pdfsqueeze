@@ -13,6 +13,7 @@
 # usage: scripts/bundle-engines-linux.sh <output-dir>
 set -euo pipefail
 
+HERE="$(cd "$(dirname "$0")" && pwd)"
 OUT="${1:?usage: scripts/bundle-engines-linux.sh <output-dir>}"
 mkdir -p "$OUT"; OUT="$(cd "$OUT" && pwd)"
 TOOLS="gs qpdf tesseract"
@@ -46,13 +47,20 @@ for f in "$OUT"/lib/*;  do patchelf --set-rpath '$ORIGIN' "$f" 2>/dev/null || tr
 
 # Ghostscript resources: find the folder containing Resource/Init wherever the
 # distribution put it (Debian: /usr/share/ghostscript/<version>/).
-INIT="$(find /usr/share /usr/lib /usr/local/share -type d -path '*/Resource/Init' 2>/dev/null | sort | tail -1 || true)"
-if [ -z "$INIT" ]; then
-  echo "error: Ghostscript resources (Resource/Init) not found" >&2
-  dpkg -L ghostscript libgs10-common 2>/dev/null | grep -i resource | head -20 >&2 || true
+GSVER="$("$OUT/bin/gs" --version 2>/dev/null || gs --version)"
+# Prefer the resources of the version we actually bundle (a source-built gs lives under /usr/local).
+INIT="$(find /usr/local/share /usr/share /usr/lib -type d -path "*/ghostscript/$GSVER/Resource/Init" 2>/dev/null | head -1 || true)"
+[ -n "$INIT" ] || INIT="$(find /usr/share /usr/lib /usr/local/share -type d -path '*/Resource/Init' 2>/dev/null | sort | tail -1 || true)"
+if [ -n "$INIT" ]; then
+  GSROOT="$(dirname "$(dirname "$INIT")")"
+elif [ -d "/usr/local/share/ghostscript/$GSVER/lib" ]; then
+  # A Ghostscript built from source embeds Resource/Init and the ICC profiles in the binary;
+  # only its lib/ folder is installed.
+  GSROOT="/usr/local/share/ghostscript/$GSVER"
+else
+  echo "error: Ghostscript resources not found (looked for */ghostscript/$GSVER)" >&2
   exit 1
 fi
-GSROOT="$(dirname "$(dirname "$INIT")")"
 echo "ghostscript resources: $GSROOT"
 mkdir -p "$OUT/share/ghostscript"
 cp -RL "$GSROOT"/. "$OUT/share/ghostscript/"
@@ -93,7 +101,26 @@ if command -v dpkg >/dev/null; then
       pkg="$(dpkg -S "$cand" 2>/dev/null | head -1 | cut -d: -f1 || true)"
       [ -n "$pkg" ] && break
     done
-    if [ -z "$pkg" ]; then echo "warning: no package owns $f (licence not recorded)" >&2; continue; fi
+    if [ -z "$pkg" ]; then
+      case "$f" in
+        # qpdf is built from source (Ubuntu 22.04 ships a qpdf too old for JSON v2): its licence
+        # texts are kept in scripts/licenses/qpdf, because the install tree has none.
+        */bin/gs|*/libgs.so*)
+          if [ ! -d "$OUT/licenses/ghostscript-source" ]; then
+            mkdir -p "$OUT/licenses/ghostscript-source"
+            cp "$HERE"/licenses/ghostscript/* "$OUT/licenses/ghostscript-source/"
+            echo "ghostscript $("$OUT/bin/gs" --version) (built from source, https://ghostscript.com/releases/)" >> "$OUT/MANIFEST.txt"
+          fi ;;
+        */qpdf|*/libqpdf.so*)
+          if [ ! -d "$OUT/licenses/qpdf" ]; then
+            mkdir -p "$OUT/licenses/qpdf"
+            cp "$HERE"/licenses/qpdf/* "$OUT/licenses/qpdf/"
+            echo "qpdf $("$OUT/bin/qpdf" --version | head -1 | awk '{print $3}') (built from source, https://github.com/qpdf/qpdf)" >> "$OUT/MANIFEST.txt"
+          fi ;;
+        *) echo "warning: no package owns $f (licence not recorded)" >&2 ;;
+      esac
+      continue
+    fi
     if [ ! -d "$OUT/licenses/$pkg" ]; then
       mkdir -p "$OUT/licenses/$pkg"
       cp "/usr/share/doc/$pkg/copyright" "$OUT/licenses/$pkg/" 2>/dev/null || true

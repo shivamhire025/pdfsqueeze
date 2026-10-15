@@ -167,7 +167,8 @@ pub fn is_bundled(tool: &Path) -> bool {
 /// directly under `share/ghostscript`, Debian, Arch and MSYS2 add a version
 /// folder, and the Windows installer uses `<install>\Resource`.
 pub fn ghostscript_root(base: &Path) -> Option<PathBuf> {
-    let has_init = |d: &Path| d.join("Resource").join("Init").is_dir();
+    // A source-built Ghostscript embeds Resource/Init in the binary and installs only lib/.
+    let has_init = |d: &Path| d.join("Resource").join("Init").is_dir() || d.join("lib").is_dir();
     let share = base.join("share").join("ghostscript");
     if has_init(&share) {
         return Some(share);
@@ -194,6 +195,9 @@ fn command(tool: &Path) -> Command {
             let dirs: Vec<PathBuf> = ["Resource/Init", "lib", "Resource/Font", "fonts"]
                 .iter()
                 .map(|d| gs.join(d))
+                // A search path that does not exist (a source-built Ghostscript has no
+                // Resource/ folders) can make Ghostscript produce empty output.
+                .filter(|d| d.is_dir())
                 .collect();
             // join_paths uses ':' or ';' as the platform requires
             if let Ok(joined) = std::env::join_paths(dirs) {
@@ -532,6 +536,12 @@ mod tests {
         // Windows installer: <base>/Resource/Init
         mk("win/Resource/Init");
         assert_eq!(ghostscript_root(&root.join("win")), Some(root.join("win")));
+        // Source-built Ghostscript: Resource/Init is embedded, only lib/ is installed
+        mk("src/share/ghostscript/lib");
+        assert_eq!(
+            ghostscript_root(&root.join("src")),
+            Some(root.join("src/share/ghostscript"))
+        );
         // nothing there
         mk("empty");
         assert_eq!(ghostscript_root(&root.join("empty")), None);

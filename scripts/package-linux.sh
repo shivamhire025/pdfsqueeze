@@ -30,7 +30,8 @@ Source code: https://github.com/shivamhire025/pdfsqueeze
 
 This package also bundles unmodified builds of third-party programs and
 libraries (Ghostscript, qpdf, Tesseract and their dependencies) from the
-Ubuntu packages. engines/MANIFEST.txt lists
+Ubuntu packages, except Ghostscript and qpdf, which are built
+from their official source releases. engines/MANIFEST.txt lists
 each with its exact version, engines/licenses/ holds their licence texts, and
 THIRD-PARTY-NOTICES.md links to the upstream projects. The corresponding source
 for those exact versions is available from the upstream projects and from

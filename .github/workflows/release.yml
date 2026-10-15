@@ -89,7 +89,7 @@ jobs:
       - name: Install build-time engines (end users never need these)
         run: |
           sudo apt-get update
-          sudo apt-get install -y ghostscript tesseract-ocr tesseract-ocr-eng fonts-urw-base35 patchelf \
+          sudo apt-get install -y tesseract-ocr tesseract-ocr-eng fonts-urw-base35 patchelf \
             cmake g++ zlib1g-dev libjpeg-dev libssl-dev
       # Ubuntu 22.04 ships qpdf 10.6, which lacks the JSON output pdfsqueeze needs
       # (qpdf 11+). Build a pinned current release so the package bundles a good one.
@@ -108,6 +108,21 @@ jobs:
           hash -r
           echo "using: $(command -v qpdf)"
           qpdf --version
+      # Ubuntu 22.04 ships Ghostscript 9.55 (patched, but old). Build the pinned current release
+      # from its official source tarball, verified by SHA-256.
+      - name: Build Ghostscript 10.08.0 from source
+        run: |
+          mkdir -p /tmp/gs-src && cd /tmp/gs-src
+          curl -fsSL -o gs.tar.gz https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/gs10080/ghostscript-10.08.0.tar.gz
+          echo "caf199e3f233f1290b27d0972d636f66c303355f2353309b7bfddf1edda06b3d  gs.tar.gz" | sha256sum -c -
+          tar xzf gs.tar.gz && cd ghostscript-10.08.0
+          ./configure --prefix=/usr/local --disable-cups --without-x
+          make -j"$(nproc)"
+          sudo make install
+          # the colour profiles are embedded in the binary; PDF/A needs one on disk
+          sudo cp -R iccprofiles /usr/local/share/ghostscript/10.08.0/
+          sudo ldconfig && hash -r
+          echo "using: $(command -v gs) $(gs --version)"
       - run: cargo test --release
       - run: bash ./scripts/package-linux.sh
       - name: Smoke test inside a bare container with no engines installed
