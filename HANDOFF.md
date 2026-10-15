@@ -4,10 +4,11 @@
 Everything here was checked against the repo, CI and the machine on the date below. Where
 something was only written and never run, it says so.
 
-- **Last updated:** 2026-10-13 (night; security fixes, dry runs, installer tests, icon).
+- **Last updated:** 2026-10-15 (security fixes, dry runs, installer tests, icon, landing-page illustrations, licence audit, Linux verified in Docker, launch plan).
 - **Git state:** do not trust a number written here. Run `git status -sb` and
-  `git log --oneline origin/main..HEAD`. On 2026-10-13 (night) the tree was clean and **1 docs-only
-  commit (`d7acef3`) was not pushed**; everything else, through `2e8b3c6`, is on GitHub.
+  `git log --oneline origin/main..HEAD`. On 2026-10-15 the tree was clean and **11 commits were not
+  pushed** (docs, landing-page illustrations and reorder, draft `TERMS.md`, licence audit and
+  notices, Linux Ghostscript-from-source and Docker script). Last push was `9b4ae0d`.
 - **Repo:** https://github.com/shivamhire025/pdfsqueeze (public, AGPL-3.0)
 - **Live landing page:** https://shivamhire025.github.io/pdfsqueeze/ (GitHub Pages, branch `main`,
   folder `/docs`). It shows the last *pushed* version.
@@ -79,19 +80,23 @@ JavaScript. Add `&splash=hold` to keep the opening splash on screen.
 
 ## What to do next (each step needs the owner's go-ahead; see "Working rules")
 
-Done 2026-10-13: security review and fixes (see `SECURITY.md`, CHANGELOG "Security"); pushed; CI green
-(run 38492879045); release dry run all six packages green (run 38492887452); installers tested in
-CI (run 38493915273); taskbar/Dock icon added (appearance not yet looked at by a person).
+Done since the last release dry run (2026-10-13): landing-page illustrations (original UI kept) and
+"Get it" moved second; draft `TERMS.md`; licence audit with `THIRD-PARTY-NOTICES.md` shipped in all
+packages; Linux package now builds Ghostscript 10.08.0 from source and was **verified in Docker**
+(54 of 54 smoke, arm64); launch and pricing plan written (private, in the owner's vault).
 
-1. **Owner decisions first** (he said "we'll do this later"): photographers' names for `CREDITS.md`;
-   wording of the Gatekeeper/SmartScreen first-launch notes; look at the Dock and taskbar icons.
-2. **Tag**: `git tag v0.1.0 && git push origin v0.1.0` publishes the files to a GitHub Release
-   (public and not quietly reversible; also the first real run of the `publish` job; ~8 minutes, free).
-3. **Page**: set `RELEASE_READY = true` near the bottom of `docs/index.html` and push (Pages
-   redeploys; GitHub caches about 10 minutes, so add a `?v=` query when checking).
-4. Re-run `installers.yml` against the real release URL (`gh workflow run installers.yml -f run_id=...`
-   uses dry-run artifacts; after the tag also try the one-liners from a clean machine).
-5. Then the backlog below.
+1. **Push, then a release dry run** (free, about 10 minutes): verifies the unrun parts: the Windows
+   licence collection fixes, the Linux x86_64 build, and the new Ghostscript build step in
+   `release.yml`. Expect small fixes; use `scripts/linux-docker.sh` locally first for Linux issues.
+2. **Phase 0 of the launch plan** (see vault page "pdfsqueeze - Launch plan"): `PRIVACY.md`,
+   `TRADEMARK.md`, `CONTRIBUTING.md` (DCO), final `TERMS.md`; reword landing-page claims to be exact
+   once there is a price or email capture; domain; publisher name and the wife's-account agreement.
+3. **Offline licence module** (Ed25519 key, key verified once at activation, never required for
+   agents/CLI); payment processor is **Lemon Squeezy** (owner's choice 2026-10-14). Not started.
+4. **Owner decisions still open:** photographers' names for `CREDITS.md`; Gatekeeper/SmartScreen
+   wording; Magnific licence terms for commercial use; look at Dock/taskbar icons; try the window.
+5. **Tag** `v0.1.0` (publishes; first real run of the `publish` job), then `RELEASE_READY = true`.
+6. Then the backlog below.
 
 ## Where things are
 
@@ -110,6 +115,10 @@ CI (run 38493915273); taskbar/Dock icon added (appearance not yet looked at by a
 | `src/security.rs`, `fix.rs`, `convert.rs`, `ocr.rs`, `imgpdf.rs`, `pdfout.rs` | Passwords, metadata and info; check, repair, linearize, PDF/A; render and text via Ghostscript; OCR overlay; images to PDF (incl. `load_rgba`); minimal PDF writer |
 | `scripts/smoke.sh` | 53 end-to-end checks, any OS; `SMOKE_REQUIRE_BUNDLED=1`, `SMOKE_SKIP_OCR=1` |
 | `scripts/bundle-engines.sh`, `package-macos.sh`, `package-macos-app.sh` | macOS bundling (dylib relocation, ad-hoc signing), tarball, and the `.app` |
+| `scripts/gen-notices.py`, `THIRD-PARTY-NOTICES.md`, `THIRD-PARTY-LICENSES-RUST.txt` | Generated notices (Rust crates + bundled programs); re-run after dependency changes; shipped in every package |
+| `scripts/licenses/` | Licence texts for source-built engines (qpdf, Ghostscript) used by the Linux bundler |
+| `scripts/linux-docker.sh` | One-command Linux build + smoke test in Docker (Ubuntu 22.04, ~3 min) |
+| `TERMS.md`, `SECURITY.md` | Draft terms of use (not shipped yet); security model and reporting |
 | `scripts/bundle-engines-linux.sh`, `package-linux.sh` | Linux (ldd + patchelf; glibc floor recorded) |
 | `scripts/stage-windows.ps1`, `bundle-tesseract-windows.sh` | Windows: official Ghostscript + qpdf unpacked with 7-Zip; MSYS2 only for Tesseract |
 | `scripts/make-hero.py`, `set-hero.py` | Generated licence-free artwork; prepare a photograph as the background |
@@ -136,6 +145,9 @@ CI (run 38493915273); taskbar/Dock icon added (appearance not yet looked at by a
   its own results folder; the signature picture is uploaded as `__signature.png` and hidden.
 - **The Mac download is a `.app`**; a bare launch from the desktop opens the window, from a
   terminal it prints help; `PDFSQUEEZE_NO_GUI=1` forces help (agents, CI).
+
+- **Linux engines:** qpdf and Ghostscript are built from pinned official sources (SHA-256 checked); Tesseract and libraries are Ubuntu's. A source-built Ghostscript embeds its resources; the engine finder and `GS_LIB` handle that.
+- **Monetisation (plan, not built):** AGPL stays; paid = signed builds, updates, support, company licence; agents/CLI free; processor Lemon Squeezy; keep own signing key for portability.
 
 ## Backlog
 
