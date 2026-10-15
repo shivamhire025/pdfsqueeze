@@ -32,6 +32,16 @@ Plain-language record of what pdfsqueeze can do and how well that has been check
 - **Not verified:** the Magnific free licence terms for commercial use; licence headers of the
   fonts and colour profiles shipped inside `share/ghostscript`.
 
+### Release dry run 3 (2026-10-15, run 38676970538, commit 5f34af2, nothing published)
+- CI (38676962802): 5 of 5 green. Release dry run: all six package jobs and `publish` skipped as
+  designed, **including the new Ghostscript 10.08.0 source build on Linux x86_64 and arm64**.
+- Inspected the CI-built packages: Linux x86_64 has 32 libraries, 32 manifest lines and 32 licence
+  folders, Ghostscript 10.08.0 and qpdf 12.4.2 recorded as built from source; Windows x64 manifest has
+  versions for Ghostscript (gs10080) and qpdf (v12.4.2) and 36 components with 33 licence folders.
+- **Gap found:** four Windows components had no licence folder (giflib, libidn2, lz4, openjpeg2: MSYS2
+  uses other folder names). Fixed in `bundle-tesseract-windows.sh` by taking any licence-looking file
+  the package installed. *Written, not yet run in CI.*
+
 ### Landing page illustrations (2026-10-14, local, not pushed)
 - Illustrations only; the page's layout, styling, copy, tabs and download logic are exactly as they
   were. Added: a hero scene under the buttons (fanned real pages, an app window with a cursor and

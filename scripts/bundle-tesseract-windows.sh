@@ -41,7 +41,18 @@ for dll in "$DEST"/*.dll "$TESS"; do
   if ! grep -q "^$pkgfull " "$ENGINES/MANIFEST.txt" 2>/dev/null; then
     echo "$pkgfull $ver" >> "$ENGINES/MANIFEST.txt"
     src="$PREFIX/share/licenses/$short"
-    if [ -d "$src" ]; then mkdir -p "$ENGINES/licenses/$short"; cp -R "$src"/. "$ENGINES/licenses/$short/"; fi
+    if [ -d "$src" ]; then
+      mkdir -p "$ENGINES/licenses/$short"; cp -R "$src"/. "$ENGINES/licenses/$short/"
+    else
+      # No folder under that name (e.g. giflib, libidn2, lz4, openjpeg2): take any licence-looking
+      # file the package installed, wherever it put it.
+      mkdir -p "$ENGINES/licenses/$short"
+      pacman -Ql "$pkgfull" 2>/dev/null | awk '{print $2}' \
+        | grep -iE '/(COPYING|LICEN[SC]E|NOTICE|COPYRIGHT)[^/]*$' | while read -r lf; do
+          [ -f "$lf" ] && cp "$lf" "$ENGINES/licenses/$short/" || true
+        done
+      [ -n "$(ls -A "$ENGINES/licenses/$short")" ] || echo "warning: no licence file found for $pkgfull" >&2
+    fi
   fi
 done
 
