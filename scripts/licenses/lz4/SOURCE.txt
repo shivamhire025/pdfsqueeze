@@ -1,0 +1,4 @@
+lz4 1.11.1. liblz4 (the library that is bundled) is BSD-2-Clause: see LICENSE (lib/LICENSE in the source).
+The lz4 command-line tool is GPL-2.0-or-later but is not shipped.
+Source: https://github.com/lz4/lz4/tree/v1.11.1  (file lib/LICENSE)
+Kept here because MSYS2's package installs no licence file.

@@ -1,0 +1,5 @@
+libidn2 2.3.8, licence: the library is LGPL-3.0-or-later (or GPL-2.0-or-later); see COPYING.LESSERv3 and COPYINGv2.
+COPYING is the GPLv3 text for the command-line tool (not shipped); COPYING.unicode covers the Unicode data.
+Source: https://ftp.gnu.org/gnu/libidn/libidn2-2.3.8.tar.gz
+Tarball sha256: f557911bf6171621e1f72ff35f5b1825bb35b52ed45325dcdee931e5d3c0787a (same as the MSYS2 recipe).
+Kept here because MSYS2's package installs no licence file. The library source is available from the URL above.

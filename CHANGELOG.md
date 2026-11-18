@@ -10,7 +10,17 @@ Plain-language record of what pdfsqueeze can do and how well that has been check
   `tesseract-data-eng` package on 2026-10-17. The Windows build now downloads `eng.traineddata`
   (tessdata_fast 4.1.0, the same file Homebrew ships) pinned by commit and sha256, stops if the
   checksum differs, and ships its licence text. *Checked locally:* download, checksum match and
-  rejection of a wrong hash. *Not yet run in CI.*
+  rejection of a wrong hash. *Run in CI on 2026-11-18: Windows x64 package builds, OCR works,
+  60 of 60 smoke checks.*
+- The Windows bundler stopped silently when a package had no licence file (a bug in the October
+  licence fallback, found by the first real run). It now warns and carries on, and says which line
+  failed if anything else breaks. *CI-verified (run 44421647254).*
+- Licence texts for giflib (MIT), libidn2 (LGPL-3.0-or-later / GPL-2.0-or-later) and lz4
+  (BSD-2-Clause) were missing from the Windows package because MSYS2 ships none. They are now kept
+  in `scripts/licenses/` from the exact upstream versions (tarballs match MSYS2's checksums) and
+  copied in. *Checked locally against a stand-in MSYS2 tree; not yet run in CI.*
+- Apple Silicon builds moved from the retired `macos-14` runner to `macos-15`, so the Apple Silicon
+  app now needs **macOS 15 or later** (the Intel build already did). *Not yet run in CI.*
 
 ### Licence audit and third-party notices (2026-10-14, local, not pushed)
 - Audited what the shipped packages really contain (the CI-built macOS, Linux and Windows packages

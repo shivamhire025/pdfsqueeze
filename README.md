@@ -53,7 +53,7 @@ See [AGENTS.md](AGENTS.md) for the full contract, MCP client configuration and r
 
 | Platform | Command | Status |
 |---|---|---|
-| macOS, Apple Silicon | `curl -fsSL https://raw.githubusercontent.com/shivamhire025/pdfsqueeze/main/install.sh \| sh` | built and smoke-tested in CI; needs macOS 14+ |
+| macOS, Apple Silicon | `curl -fsSL https://raw.githubusercontent.com/shivamhire025/pdfsqueeze/main/install.sh \| sh` | built and smoke-tested in CI; needs macOS 15+ |
 | macOS, Intel | same command | built and smoke-tested in CI; needs macOS 15+ |
 | Linux x86_64 / arm64 | same command | built and smoke-tested in CI in a bare container; needs glibc 2.35+ (Ubuntu 22.04+, Debian 12+) |
 | Windows 64-bit | `irm https://raw.githubusercontent.com/shivamhire025/pdfsqueeze/main/install.ps1 \| iex` | built and smoke-tested in CI, including OCR |

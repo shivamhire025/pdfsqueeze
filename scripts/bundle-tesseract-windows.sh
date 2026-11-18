@@ -24,6 +24,7 @@ ENGINES="${1:?usage: scripts/bundle-tesseract-windows.sh <path to staged engines
 [ -d "$ENGINES/bin" ] || { echo "error: $ENGINES/bin not found; run stage-windows.ps1 first" >&2; exit 1; }
 ENGINES="$(cd "$ENGINES" && pwd)"
 PREFIX="${MINGW_PREFIX:-/mingw64}"
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 TESS="$PREFIX/bin/tesseract.exe"
 [ -f "$TESS" ] || { echo "error: $TESS not found (pacman -S mingw-w64-x86_64-tesseract-ocr)" >&2; exit 1; }
@@ -50,9 +51,13 @@ for dll in "$DEST"/*.dll "$TESS"; do
     src="$PREFIX/share/licenses/$short"
     if [ -d "$src" ]; then
       mkdir -p "$ENGINES/licenses/$short"; cp -R "$src"/. "$ENGINES/licenses/$short/"
+    elif [ -d "$HERE/licenses/$short" ]; then
+      # MSYS2's package installs no licence file (giflib, libidn2, lz4): use the texts kept in
+      # scripts/licenses/<name>, taken from the same upstream version (see SOURCE.txt there).
+      mkdir -p "$ENGINES/licenses/$short"; cp -R "$HERE/licenses/$short"/. "$ENGINES/licenses/$short/"
     else
-      # No folder under that name (e.g. giflib, libidn2, lz4, openjpeg2): take any licence-looking
-      # file the package installed, wherever it put it.
+      # No folder under that name: take any licence-looking file the package installed,
+      # wherever it put it.
       mkdir -p "$ENGINES/licenses/$short"
       # `|| true`: grep exits 1 when nothing matches, and under pipefail that would stop the whole
       # script silently before the warning below; a missing licence file must be a warning only.
