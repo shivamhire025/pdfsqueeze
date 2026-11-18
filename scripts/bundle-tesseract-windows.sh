@@ -17,6 +17,8 @@
 # We use the msvcrt-based mingw64 environment on purpose: its programs run on
 # any Windows 7+ machine without installing a runtime.
 set -euo pipefail
+# Never fail silently: say which line stopped the script.
+trap 'echo "error: bundle-tesseract-windows.sh stopped at line $LINENO: $BASH_COMMAND" >&2' ERR
 
 ENGINES="${1:?usage: scripts/bundle-tesseract-windows.sh <path to staged engines folder>}"
 [ -d "$ENGINES/bin" ] || { echo "error: $ENGINES/bin not found; run stage-windows.ps1 first" >&2; exit 1; }
@@ -52,10 +54,12 @@ for dll in "$DEST"/*.dll "$TESS"; do
       # No folder under that name (e.g. giflib, libidn2, lz4, openjpeg2): take any licence-looking
       # file the package installed, wherever it put it.
       mkdir -p "$ENGINES/licenses/$short"
-      pacman -Ql "$pkgfull" 2>/dev/null | awk '{print $2}' \
+      # `|| true`: grep exits 1 when nothing matches, and under pipefail that would stop the whole
+      # script silently before the warning below; a missing licence file must be a warning only.
+      { pacman -Ql "$pkgfull" 2>/dev/null | awk '{print $2}' \
         | grep -iE '/(COPYING|LICEN[SC]E|NOTICE|COPYRIGHT)[^/]*$' | while read -r lf; do
           [ -f "$lf" ] && cp "$lf" "$ENGINES/licenses/$short/" || true
-        done
+        done; } || true
       [ -n "$(ls -A "$ENGINES/licenses/$short")" ] || echo "warning: no licence file found for $pkgfull" >&2
     fi
   fi
