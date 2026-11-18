@@ -145,9 +145,11 @@ jobs:
         with:
           msystem: MINGW64
           update: true
+          # English data is not installed from MSYS2: it dropped the mingw64
+          # tesseract-data packages on 2026-10-17. bundle-tesseract-windows.sh
+          # downloads eng.traineddata pinned by commit and sha256 instead.
           install: >-
             mingw-w64-x86_64-tesseract-ocr
-            mingw-w64-x86_64-tesseract-data-eng
       - run: cargo test --release
       - run: cargo build --release
       - name: Stage Ghostscript, qpdf and pdfsqueeze.exe

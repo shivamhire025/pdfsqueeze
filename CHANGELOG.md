@@ -5,6 +5,13 @@ Plain-language record of what pdfsqueeze can do and how well that has been check
 
 ## Unreleased (work since the 2026-10-10 CI run; not yet on GitHub)
 
+### Windows release fix: English OCR data (2026-11-18)
+- The first `v0.1.0` release run failed on Windows x64: MSYS2 removed its mingw64
+  `tesseract-data-eng` package on 2026-10-17. The Windows build now downloads `eng.traineddata`
+  (tessdata_fast 4.1.0, the same file Homebrew ships) pinned by commit and sha256, stops if the
+  checksum differs, and ships its licence text. *Checked locally:* download, checksum match and
+  rejection of a wrong hash. *Not yet run in CI.*
+
 ### Licence audit and third-party notices (2026-10-14, local, not pushed)
 - Audited what the shipped packages really contain (the CI-built macOS, Linux and Windows packages
   of run 38492887452, plus `cargo metadata` for all five build targets).

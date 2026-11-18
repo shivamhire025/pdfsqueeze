@@ -2,8 +2,13 @@
 # Add Tesseract (OCR) to a staged Windows package, from an MSYS2 MinGW install.
 #
 # Run from an MSYS2 "MINGW64" shell, after scripts/stage-windows.ps1:
-#   pacman -S --needed mingw-w64-x86_64-tesseract-ocr mingw-w64-x86_64-tesseract-data-eng
+#   pacman -S --needed mingw-w64-x86_64-tesseract-ocr
 #   scripts/bundle-tesseract-windows.sh dist/pdfsqueeze-windows-x64/pdfsqueeze/engines
+#
+# English data (eng.traineddata) is downloaded, not taken from MSYS2: MSYS2 dropped its
+# mingw64 tesseract-data packages on 2026-10-17. The file is the "fast" model from
+# tesseract-ocr/tessdata_fast, pinned by commit (tag 4.1.0) and by sha256; the build stops
+# if the checksum does not match.
 #
 # Tesseract goes in its own engines/tesseract/ folder with its own DLLs: Windows
 # loads DLLs from the executable's folder, and MSYS2's builds of libraries such
@@ -59,11 +64,18 @@ done
 # English data and the helper files Tesseract needs to write PDFs
 TD="$PREFIX/share/tessdata"
 mkdir -p "$ENGINES/share/tessdata"
-if [ -f "$TD/eng.traineddata" ]; then
-  cp "$TD/eng.traineddata" "$ENGINES/share/tessdata/"
-else
-  echo "warning: eng.traineddata not found under $TD; OCR will not work" >&2
-fi
+ENG_COMMIT="65727574dfcd264acbb0c3e07860e4e9e9b22185"   # tessdata_fast tag 4.1.0
+ENG_SHA256="7d4322bd2a7749724879683fc3912cb542f19906c83bcc1a52132556427170b2"
+ENG_URL="https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/$ENG_COMMIT/eng.traineddata"
+curl -fsSL --retry 3 --max-time 120 -o "$ENGINES/share/tessdata/eng.traineddata" "$ENG_URL" \
+  || { echo "error: could not download eng.traineddata from $ENG_URL" >&2; exit 1; }
+echo "$ENG_SHA256  $ENGINES/share/tessdata/eng.traineddata" | sha256sum -c - >/dev/null \
+  || { echo "error: eng.traineddata does not match the pinned sha256" >&2; rm -f "$ENGINES/share/tessdata/eng.traineddata"; exit 1; }
+echo "tessdata_fast eng.traineddata $ENG_COMMIT" >> "$ENGINES/MANIFEST.txt"
+mkdir -p "$ENGINES/licenses/tessdata_fast"
+curl -fsSL --retry 3 --max-time 60 -o "$ENGINES/licenses/tessdata_fast/LICENSE" \
+  "https://raw.githubusercontent.com/tesseract-ocr/tessdata_fast/$ENG_COMMIT/LICENSE" \
+  || { echo "error: could not download the tessdata_fast LICENSE" >&2; exit 1; }
 for f in pdf.ttf configs tessconfigs; do
   [ -e "$TD/$f" ] && cp -RL "$TD/$f" "$ENGINES/share/tessdata/" || true
 done
