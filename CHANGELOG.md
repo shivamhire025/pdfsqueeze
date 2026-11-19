@@ -5,7 +5,11 @@ Plain-language record of what pdfsqueeze can do and how well that has been check
 
 ## Unreleased (work since the 2026-10-10 CI run; not yet on GitHub)
 
-### Windows one-file installer (2026-11-19, written, not yet run anywhere)
+### v0.1.1: Windows one-file installer (2026-11-19)
+- **Verified by CI on a real Windows runner (dry run 44429682273):** the installer compiles (36.7 MB),
+  installs silently, the full smoke test passes against the installed copy (60 of 60) and the
+  uninstaller removes everything. **Not verified:** a real Windows 10/11 PC from a browser download,
+  a standard (non-administrator) account, upgrade over an existing install.
 - `v0.1.0` shipped Windows as a zip (a folder of 691 files: the app plus Ghostscript, qpdf and
   Tesseract), which is not how Windows users expect to install software.
 - Added `scripts/windows-installer.iss` (Inno Setup) and CI steps that build
@@ -15,10 +19,7 @@ Plain-language record of what pdfsqueeze can do and how well that has been check
   install is `install.ps1`). Not code-signed, so SmartScreen still shows "unknown publisher" once.
 - CI tests the installer before it can be published: silent install, the full smoke test against the
   installed copy, then uninstall and check nothing is left. Each step has a timeout.
-- **Not run anywhere yet:** the script could not be compiled on the Mac (Inno Setup is Windows-only);
-  the first compile and the install, smoke and uninstall steps will happen in the next dry run. Nobody
-  has installed it on a real Windows PC. The zip stays as a secondary download. 32-bit has no
-  installer yet.
+- The zip stays as a secondary download. 32-bit has no installer yet.
 
 ### Windows release fix: English OCR data (2026-11-18)
 - The first `v0.1.0` release run failed on Windows x64: MSYS2 removed its mingw64
