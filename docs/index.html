@@ -276,8 +276,8 @@
     <h1><span class="up">Stop uploading</span>your PDFs to the <em>internet.</em></h1>
     <p class="lead">Compress, organize, merge, sign and convert PDFs in a native app that runs on your own computer. Nothing is uploaded. Open source, offline, and yours.</p>
     <div class="cta">
-      <a class="btn solid" id="hero-dl" href="#get"><svg class="ic dl-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg><span id="hero-dl-label">Download</span></a>
-      <a class="btn" href="https://github.com/shivamhire025/pdfsqueeze">View the source</a>
+      <a class="btn solid" id="hero-mac" href="#get"><svg class="ic dl-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg>Download for Mac</a>
+      <a class="btn" id="hero-win" href="#get"><svg class="ic dl-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg>Download for Windows</a>
     </div>
 <div class="art" aria-hidden="true">
     <div class="glow"></div>
@@ -535,12 +535,16 @@
   if (/Win/i.test(plat + ua)) os = "windows";
   else if (/Mac/i.test(plat + ua)) os = "mac";
   else if (/Linux|X11/i.test(plat + ua) && !/Android/i.test(ua)) os = "linux";
-  const names = { mac: "Download for Mac", windows: "Download for Windows", linux: "Download for Linux" };
   if (os) {
     const col = document.querySelector(`#dl [data-os="${os}"]`);
     if (col) col.classList.add("mine");
-    document.getElementById("hero-dl-label").textContent = names[os];
   }
+  // Hero buttons: Windows downloads the 64-bit zip directly. Mac goes to the download section,
+  // because Apple Silicon and Intel need different files and a browser cannot tell them apart.
+  const heroMac = document.getElementById("hero-mac"), heroWin = document.getElementById("hero-win");
+  if (RELEASE_READY) heroWin.href = `${REPO}/releases/latest/download/pdfsqueeze-windows-x64.zip`;
+  // The button for this computer is the filled one.
+  if (os === "windows") { heroWin.classList.add("solid"); heroMac.classList.remove("solid"); }
   // Screenshot tabs.
   const caps = { organize: "Organize pages: drag, turn, remove", merge: "Merge: numbered, draggable, one-click add", sign: "Sign: draw, then place and resize on the page", save: "Save all: one button, one folder" };
   const tabs = document.querySelectorAll(".tabs [data-tab]");
