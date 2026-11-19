@@ -42,8 +42,12 @@ See [AGENTS.md](AGENTS.md) for the full contract, MCP client configuration and r
   notarized (that needs a paid Apple account), so the first time macOS may say it cannot verify the
   developer: open **System Settings, Privacy & Security** and choose **Open Anyway**, or run
   `xattr -dr com.apple.quarantine pdfsqueeze.app` once. The one-line installer below avoids this.
-- **Windows:** unzip and double-click **pdfsqueeze.exe**. The first time, SmartScreen may warn
-  because the program is not code-signed; choose **More info, Run anyway**.
+- **Windows:** download **pdfsqueeze-windows-x64-setup.exe** and run it (Windows 10 and 11, 64-bit).
+  It installs for your user only, so no password or administrator rights are needed, and adds a Start
+  menu entry and an uninstaller under Settings, Apps. The first time, SmartScreen may warn because the
+  program is not code-signed; choose **More info, Run anyway**. Prefer no install? Extract
+  `pdfsqueeze-windows-x64.zip` (all of it, not from inside the zip preview) and double-click
+  **pdfsqueeze.exe**. The 32-bit build is zip only.
 - **Linux:** run `./pdfsqueeze` from the unzipped folder (it opens in your browser).
 - **Any system, from a terminal:** `pdfsqueeze ui` opens the window; `pdfsqueeze --help` lists the
   commands. Started with no arguments from a terminal or script it prints help; set
@@ -75,7 +79,7 @@ pdfsqueeze is not signed with a paid certificate (it is free, open-source softwa
   download-quarantine flag, and `curl` does not set one. If you download the archive in a
   browser, clear the flag once: `xattr -dr com.apple.quarantine ~/Downloads/pdfsqueeze`.
 - **Windows**: `install.ps1` clears the "downloaded from the internet" mark. If you download the
-  zip in a browser instead, Windows SmartScreen may say "Windows protected your PC": choose
+  setup file or the zip in a browser instead, Windows SmartScreen may say "Windows protected your PC": choose
   **More info, then Run anyway**, or right-click the zip, Properties, tick **Unblock** before
   extracting. Free code signing for open-source projects (SignPath Foundation) is planned.
 - **Linux**: no warnings.
