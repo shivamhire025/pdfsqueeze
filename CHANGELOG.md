@@ -5,6 +5,21 @@ Plain-language record of what pdfsqueeze can do and how well that has been check
 
 ## Unreleased (work since the 2026-10-10 CI run; not yet on GitHub)
 
+### Windows one-file installer (2026-11-19, written, not yet run anywhere)
+- `v0.1.0` shipped Windows as a zip (a folder of 691 files: the app plus Ghostscript, qpdf and
+  Tesseract), which is not how Windows users expect to install software.
+- Added `scripts/windows-installer.iss` (Inno Setup) and CI steps that build
+  `pdfsqueeze-windows-x64-setup.exe`: one file, per-user install under
+  `%LOCALAPPDATA%\Programs\pdfsqueeze` with no administrator rights, a Start menu entry, an optional
+  desktop shortcut and an uninstaller under Settings > Apps. No PATH change (the command-line
+  install is `install.ps1`). Not code-signed, so SmartScreen still shows "unknown publisher" once.
+- CI tests the installer before it can be published: silent install, the full smoke test against the
+  installed copy, then uninstall and check nothing is left. Each step has a timeout.
+- **Not run anywhere yet:** the script could not be compiled on the Mac (Inno Setup is Windows-only);
+  the first compile and the install, smoke and uninstall steps will happen in the next dry run. Nobody
+  has installed it on a real Windows PC. The zip stays as a secondary download. 32-bit has no
+  installer yet.
+
 ### Windows release fix: English OCR data (2026-11-18)
 - The first `v0.1.0` release run failed on Windows x64: MSYS2 removed its mingw64
   `tesseract-data-eng` package on 2026-10-17. The Windows build now downloads `eng.traineddata`
