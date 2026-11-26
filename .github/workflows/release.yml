@@ -212,6 +212,46 @@ jobs:
           INST="$(cygpath -u "$RUNNER_TEMP")/pdfsqueeze-installed"
           SMOKE_REQUIRE_BUNDLED=1 PATH="/usr/bin:/c/Windows/System32:/c/Windows" \
             bash ./scripts/smoke.sh "$INST/pdfsqueeze.exe"
+      # Launch the installed app the way a person does (the Start menu shortcut, no arguments, no
+      # terminal) and require the app window to appear and stay. v0.1.0 and v0.1.1 shipped without
+      # this check and closed instantly on double-click.
+      - name: Installer test, launch from the Start menu
+        shell: pwsh
+        timeout-minutes: 5
+        run: |
+          $lnk = Join-Path $env:APPDATA "Microsoft\Windows\Start Menu\Programs\pdfsqueeze.lnk"
+          Start-Process -FilePath $lnk
+          $app = $null
+          try {
+            for ($i = 0; $i -lt 60 -and -not $app; $i++) {
+              Start-Sleep -Seconds 1
+              $app = Get-Process pdfsqueeze -ErrorAction SilentlyContinue |
+                Where-Object { $_.MainWindowTitle -eq "pdfsqueeze" } | Select-Object -First 1
+            }
+            if (-not $app) { throw "no pdfsqueeze window within 60 seconds of launching the shortcut" }
+            Start-Sleep -Seconds 15
+            $app.Refresh()
+            if ($app.HasExited) { throw "the app window closed by itself" }
+            "window is open (process $($app.Id))"
+          } finally {
+            # A picture of the desktop, to check the page inside the window really rendered.
+            try {
+              Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+              $b = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+              $bmp = New-Object System.Drawing.Bitmap $b.Width, $b.Height
+              [System.Drawing.Graphics]::FromImage($bmp).CopyFromScreen($b.Location, [System.Drawing.Point]::Empty, $b.Size)
+              $bmp.Save((Join-Path $env:RUNNER_TEMP "launch.png"))
+            } catch { "screenshot failed: $_" }
+            Get-Process pdfsqueeze -ErrorAction SilentlyContinue | Stop-Process -Force
+          }
+      # Not named pdfsqueeze-*, so the publish job never attaches it to a release.
+      - name: Keep the launch screenshot
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: windows-launch-screenshot
+          path: ${{ runner.temp }}/launch.png
+          if-no-files-found: ignore
       - name: Installer test, 3/3 uninstall
         shell: pwsh
         timeout-minutes: 5

@@ -1,6 +1,6 @@
 [package]
 name = "pdfsqueeze"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 description = "Offline, open-source PDF toolkit: compress, merge, split and more. Nothing leaves your machine."
 default-run = "pdfsqueeze"

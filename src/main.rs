@@ -23,26 +23,53 @@ use cli::{Cli, Cmd};
 use commands::{command_name, envelope, execute, Ctx, EXIT_USAGE};
 use serde_json::json;
 
-/// Should a bare launch open the app window? Yes when it was started from the desktop (double-click
-/// in Finder or Explorer): no arguments, and neither input nor output is a terminal. Never from a
-/// terminal or a script, so `pdfsqueeze` there still prints help. `PDFSQUEEZE_NO_GUI=1` forces help.
-fn opens_window_on_launch(arg_count: usize, stdin_tty: bool, stdout_tty: bool, no_gui: bool, can_window: bool) -> bool {
-    arg_count <= 1 && !stdin_tty && !stdout_tty && !no_gui && can_window
+/// Should a bare launch open the app window? Yes when it was started from the desktop: no
+/// arguments, and either
+/// - neither input nor output is a terminal (macOS and Linux double-click), or
+/// - the system opened a console just for this process (Windows double-click or Start menu, where
+///   input and output *are* terminals, so the first rule never matches).
+///
+/// Never from a shared terminal or a script, so `pdfsqueeze` there still prints help.
+/// `PDFSQUEEZE_NO_GUI=1` forces help.
+fn opens_window_on_launch(
+    arg_count: usize,
+    stdin_tty: bool,
+    stdout_tty: bool,
+    own_console: bool,
+    no_gui: bool,
+    can_window: bool,
+) -> bool {
+    let no_terminal = !stdin_tty && !stdout_tty;
+    let fresh_console = own_console && stdin_tty && stdout_tty;
+    arg_count <= 1 && (no_terminal || fresh_console) && !no_gui && can_window
 }
 
-/// Windows builds are console programs (so scripts get output). When started by double-click the
-/// system opens a console just for us; close it so only the window shows. When started from a
-/// terminal the console is shared, and is left alone.
+/// Is there a console that exists only for this process? That is what Windows creates when a
+/// console program is double-clicked. A console shared with a shell has two or more processes.
+#[cfg(windows)]
+fn has_own_console() -> bool {
+    extern "system" {
+        fn GetConsoleProcessList(list: *mut u32, count: u32) -> u32;
+    }
+    let mut pids = [0u32; 4];
+    // SAFETY: plain Win32 call with a valid buffer and its length.
+    unsafe { GetConsoleProcessList(pids.as_mut_ptr(), pids.len() as u32) == 1 }
+}
+#[cfg(not(windows))]
+fn has_own_console() -> bool {
+    false
+}
+
+/// Windows builds are console programs (so scripts get output). When the console is only ours,
+/// close it so only the app window shows. A shared console is left alone.
 #[cfg(windows)]
 fn release_own_console() {
     extern "system" {
-        fn GetConsoleProcessList(list: *mut u32, count: u32) -> u32;
         fn FreeConsole() -> i32;
     }
-    let mut pids = [0u32; 4];
-    // SAFETY: plain Win32 calls with a valid buffer.
-    unsafe {
-        if GetConsoleProcessList(pids.as_mut_ptr(), pids.len() as u32) == 1 {
+    if has_own_console() {
+        // SAFETY: plain Win32 call without arguments.
+        unsafe {
             FreeConsole();
         }
     }
@@ -56,6 +83,7 @@ fn main() {
         std::env::args().count(),
         std::io::stdin().is_terminal(),
         std::io::stdout().is_terminal(),
+        has_own_console(),
         std::env::var_os("PDFSQUEEZE_NO_GUI").is_some(),
         ui::window_available(),
     ) {
@@ -161,11 +189,15 @@ mod launch_tests {
 
     #[test]
     fn only_a_bare_desktop_launch_opens_the_window() {
-        assert!(f(1, false, false, false, true)); // double-click
-        assert!(!f(1, true, false, false, true)); // typed in a terminal
-        assert!(!f(1, false, true, false, true)); // output is a terminal
-        assert!(!f(2, false, false, false, true)); // has arguments
-        assert!(!f(1, false, false, true, true)); // PDFSQUEEZE_NO_GUI
-        assert!(!f(1, false, false, false, false)); // no window on this platform (Linux)
+        // args, stdin tty, stdout tty, own console, no_gui, can_window
+        assert!(f(1, false, false, false, false, true)); // macOS double-click
+        assert!(f(1, true, true, true, false, true)); // Windows double-click or Start menu
+        assert!(!f(1, true, true, false, false, true)); // typed in a terminal
+        assert!(!f(1, false, true, false, false, true)); // output is a terminal
+        assert!(!f(1, false, true, true, false, true)); // own console but input is piped in
+        assert!(!f(1, true, false, true, false, true)); // own console but output is redirected
+        assert!(!f(2, true, true, true, false, true)); // has arguments
+        assert!(!f(1, true, true, true, true, true)); // PDFSQUEEZE_NO_GUI
+        assert!(!f(1, false, false, false, false, false)); // no window on this platform (Linux)
     }
 }

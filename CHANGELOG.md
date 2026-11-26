@@ -5,6 +5,16 @@ Plain-language record of what pdfsqueeze can do and how well that has been check
 
 ## Unreleased (work since the 2026-10-10 CI run; not yet on GitHub)
 
+### v0.1.2: Windows app opens on double-click (2026-11-25, not released yet)
+- **Bug in v0.1.0 and v0.1.1:** on Windows, double-clicking pdfsqueeze, the Start menu shortcut and
+  the installer's "Open pdfsqueeze now" showed a black window for a moment and quit. A double-clicked
+  console program gets its own console, so it looked like terminal use. Reproduced by hand on
+  Windows 11 ARM64 in a virtual machine.
+- Fixed: a console that belongs only to pdfsqueeze now counts as a desktop launch. Engine calls from
+  the app window no longer open console windows of their own.
+- The release workflow now launches the installed app from the Start menu and fails if no window
+  appears. *Verified so far:* unit tests on macOS only. The Windows code has not been compiled or run.
+
 ### v0.1.1: Windows one-file installer (2026-11-19)
 - **Verified by CI on a real Windows runner (dry run 44429682273):** the installer compiles (36.7 MB),
   installs silently, the full smoke test passes against the installed copy (60 of 60) and the

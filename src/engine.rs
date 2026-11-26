@@ -186,10 +186,32 @@ pub fn ghostscript_root(base: &Path) -> Option<PathBuf> {
     None
 }
 
+/// A `Command` that never opens a console window of its own. The app window runs without a
+/// console on Windows, where starting a console program would otherwise flash a black window for
+/// every engine call. With a console (command line use) nothing changes, so Ctrl+C still reaches
+/// the engine.
+pub fn quiet(program: &Path) -> Command {
+    #[allow(unused_mut)]
+    let mut c = Command::new(program);
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        extern "system" {
+            fn GetConsoleWindow() -> *mut std::ffi::c_void;
+        }
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        // SAFETY: plain Win32 call without arguments.
+        if unsafe { GetConsoleWindow() }.is_null() {
+            c.creation_flags(CREATE_NO_WINDOW);
+        }
+    }
+    c
+}
+
 /// A command for `tool`. Bundled engines are pointed at their own resources
 /// so they never look for (or depend on) a system install.
 fn command(tool: &Path) -> Command {
-    let mut c = Command::new(tool);
+    let mut c = quiet(tool);
     if let Some(b) = bundle_dir().filter(|b| tool.starts_with(b)) {
         if let Some(gs) = ghostscript_root(&b) {
             let dirs: Vec<PathBuf> = ["Resource/Init", "lib", "Resource/Font", "fonts"]
@@ -240,7 +262,7 @@ pub fn parse_qpdf_version(output: &str) -> Option<(u32, u32, u32)> {
 }
 
 fn check_qpdf_version(path: &Path) -> std::result::Result<(), String> {
-    let out = Command::new(path)
+    let out = quiet(path)
         .arg("--version")
         .output()
         .map_err(|e| format!("could not run {}: {e}", path.display()))?;
